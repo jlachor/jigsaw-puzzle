@@ -129,7 +129,7 @@ Build the jigsaw puzzle app iteratively, starting from the simplest possible wor
 - All coordinate transforms (hit testing, drag, snap, drawing) must account for current zoom level and pan offset
 - Verify: scroll to zoom out → image shrinks to ~20% of screen; scroll to zoom in → stops just past default; middle-drag to pan around the board
 
-### Step 10: Marquee (RTS box) selection
+### Step 10: Marquee (RTS box) selection ✅
 - Click-drag on empty space draws a selection rectangle
 - Selection uses **center point** test: a piece or group is selected if its center
   is inside the marquee rectangle
