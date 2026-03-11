@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState, useMemo } from 'preact/hooks'
-import { generateEdges, getPieceEdges, drawPieceOutline } from './puzzle/generator'
+import { generateEdges } from './puzzle/generator'
+import { renderAllPieces, drawPieces } from './puzzle/piece'
 import './app.css'
 
 export function App() {
@@ -8,10 +9,16 @@ export function App() {
   const [cols, setCols] = useState(4)
   const [rows, setRows] = useState(3)
   const [seed, setSeed] = useState(0)
+  const [started, setStarted] = useState(false)
 
   const edges = useMemo(
     () => image ? generateEdges(cols, rows) : null,
     [cols, rows, seed, image],
+  )
+
+  const pieces = useMemo(
+    () => (image && edges) ? renderAllPieces(image, cols, rows, edges) : null,
+    [image, cols, rows, edges],
   )
 
   const reshuffle = () => setSeed(s => s + 1)
@@ -30,7 +37,7 @@ export function App() {
       ctx.fillStyle = '#2d5a3d'
       ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-      if (image) {
+      if (image && pieces) {
         const maxW = canvas.width * 0.8
         const maxH = canvas.height * 0.8
         const scale = Math.min(maxW / image.naturalWidth, maxH / image.naturalHeight)
@@ -39,32 +46,14 @@ export function App() {
         const offsetX = (canvas.width - drawW) / 2
         const offsetY = (canvas.height - drawH) / 2
 
-        ctx.drawImage(image, offsetX, offsetY, drawW, drawH)
-
-        if (edges) {
-          const cellW = drawW / cols
-          const cellH = drawH / rows
-
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)'
-          ctx.lineWidth = 2
-          ctx.setLineDash([])
-
-          for (let row = 0; row < rows; row++) {
-            for (let col = 0; col < cols; col++) {
-              const pieceEdges = getPieceEdges(col, row, cols, rows, edges)
-              const x = offsetX + col * cellW
-              const y = offsetY + row * cellH
-              drawPieceOutline(ctx, x, y, cellW, cellH, pieceEdges)
-            }
-          }
-        }
+        drawPieces(ctx, pieces, offsetX, offsetY, scale)
       }
     }
 
     redraw()
     window.addEventListener('resize', redraw)
     return () => window.removeEventListener('resize', redraw)
-  }, [image, cols, rows, edges])
+  }, [image, pieces])
 
   const handleFile = (e: Event) => {
     const file = (e.target as HTMLInputElement).files?.[0]
@@ -90,7 +79,7 @@ export function App() {
           </label>
         </div>
       )}
-      {image && (
+      {image && !started && (
         <div class="grid-controls">
           <div class="grid-controls-row">
             <label>
@@ -116,9 +105,12 @@ export function App() {
             <button class="reshuffle-btn" onClick={reshuffle}>
               Reshuffle
             </button>
+            <button class="start-btn" onClick={() => setStarted(true)}>
+              Start
+            </button>
           </div>
           <div class="grid-controls-info">
-            {cols} × {rows} = {cols * rows} pieces
+            {cols} &times; {rows} = {cols * rows} pieces
           </div>
         </div>
       )}

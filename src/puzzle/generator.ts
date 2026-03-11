@@ -51,7 +51,8 @@ export function getPieceEdges(
   }
 }
 
-export function drawPieceOutline(
+/** Traces the jigsaw piece outline as a path (beginPath → closePath), without stroking or filling. */
+export function tracePieceOutline(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
@@ -61,14 +62,11 @@ export function drawPieceOutline(
 ): void {
   const tabW = cellW / 4
   const tabH = cellH / 4
-  // Tab centered on edge: starts at 3/8, ends at 5/8
   const hStart = cellW * 3 / 8
   const hEnd = cellW * 5 / 8
   const vStart = cellH * 3 / 8
   const vEnd = cellH * 5 / 8
-  // Neck pinch factor: how far along the perpendicular before the curve widens
   const neck = 0.4
-  // Head control points overshoot the neck region for a wider head (~1/3 of edge at widest)
   const headSpread = cellW * 0.15
   const headSpreadV = cellH * 0.15
 
@@ -79,7 +77,7 @@ export function drawPieceOutline(
   if (edges.top === 0) {
     ctx.lineTo(x + cellW, y)
   } else {
-    const d = -edges.top * tabH // +1 tab → upward (negative Y)
+    const d = -edges.top * tabH
     ctx.lineTo(x + hStart, y)
     ctx.bezierCurveTo(
       x + hStart, y + d * neck,
@@ -98,7 +96,7 @@ export function drawPieceOutline(
   if (edges.right === 0) {
     ctx.lineTo(x + cellW, y + cellH)
   } else {
-    const d = edges.right * tabW // +1 tab → rightward (positive X)
+    const d = edges.right * tabW
     ctx.lineTo(x + cellW, y + vStart)
     ctx.bezierCurveTo(
       x + cellW + d * neck, y + vStart,
@@ -117,7 +115,7 @@ export function drawPieceOutline(
   if (edges.bottom === 0) {
     ctx.lineTo(x, y + cellH)
   } else {
-    const d = edges.bottom * tabH // +1 tab → downward (positive Y)
+    const d = edges.bottom * tabH
     ctx.lineTo(x + hEnd, y + cellH)
     ctx.bezierCurveTo(
       x + hEnd, y + cellH + d * neck,
@@ -136,7 +134,7 @@ export function drawPieceOutline(
   if (edges.left === 0) {
     ctx.lineTo(x, y)
   } else {
-    const d = -edges.left * tabW // +1 tab → leftward (negative X)
+    const d = -edges.left * tabW
     ctx.lineTo(x, y + vEnd)
     ctx.bezierCurveTo(
       x + d * neck, y + vEnd,
@@ -152,5 +150,16 @@ export function drawPieceOutline(
   }
 
   ctx.closePath()
+}
+
+export function drawPieceOutline(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  cellW: number,
+  cellH: number,
+  edges: PieceEdges,
+): void {
+  tracePieceOutline(ctx, x, y, cellW, cellH, edges)
   ctx.stroke()
 }

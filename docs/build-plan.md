@@ -55,17 +55,25 @@ Build the jigsaw puzzle app iteratively, starting from the simplest possible wor
 - Only `drawPieceOutline()` changed — data model untouched
 - Files: `src/puzzle/generator.ts`
 
-### Step 5: Piece rendering (pre-render to offscreen canvases)
-- Clip each piece from the source image using its jigsaw outline
-- Pre-render each piece to its own offscreen canvas (cache)
-- Draw all pieces in their grid positions with jigsaw shapes
-- "Start" button accepts the cut
-- Verify: pieces look like real jigsaw pieces in place; click Start
+### Step 5: Piece rendering (pre-render to offscreen canvases) ✅
+- Extracted `tracePieceOutline()` from `drawPieceOutline()` (path-only, no stroke)
+- `renderAllPieces()` clips source image through jigsaw outline per piece at source resolution
+- Each piece cached on its own `HTMLCanvasElement` with padding for tabs (`cellW/4`, `cellH/4`)
+- `drawPieces()` stamps cached canvases onto main canvas, scaled to viewport
+- Subtle dark stroke (`rgba(0,0,0,0.3)`) around each piece for definition
+- "Start" button hides grid controls and accepts the cut
+- New file: `src/puzzle/piece.ts`
 
-### Step 6: Scatter pieces on the board
-- After "Start", scatter pieces randomly on the canvas
-- Implement point-in-piece hit testing (respecting the jigsaw outline)
-- Verify: pieces are scattered; clicking a piece highlights it (or logs to console)
+### Step 6a: Scatter pieces on the board
+- After "Start", assign each piece a random (x, y) position on the canvas
+- Draw scattered pieces instead of assembled grid
+- Verify: click Start → pieces are scattered randomly across the board
+
+### Step 6b: Hit testing (click to select a piece)
+- Translate mouse click to canvas coordinates
+- Iterate pieces in reverse draw order, use `tracePieceOutline()` + `isPointInPath()` to find the clicked piece
+- Highlight the selected piece (e.g. glow or tint)
+- Verify: clicking on a piece highlights it; clicking empty space or a blank/concave region does not
 
 ### Step 7: Drag and drop
 - Mouse down on a piece picks it up, mouse move drags, mouse up drops
