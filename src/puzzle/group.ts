@@ -146,6 +146,16 @@ export function trySnap(
   return snapped
 }
 
+/** Check if all pieces belong to a single group (puzzle solved). */
+export function isSolved(state: GroupState): boolean {
+  if (state.groupOf.length === 0) return false
+  const gid = state.groupOf[0]
+  for (let i = 1; i < state.groupOf.length; i++) {
+    if (state.groupOf[i] !== gid) return false
+  }
+  return true
+}
+
 /**
  * Merge the group of `otherPiece` into the group of `anchorPiece`.
  * All pieces that belonged to otherPiece's group now share anchorPiece's group ID.

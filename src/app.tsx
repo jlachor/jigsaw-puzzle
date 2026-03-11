@@ -7,7 +7,7 @@ import {
   hitTestPieces,
 } from './puzzle/piece'
 import type { PieceCanvas, PiecePosition } from './puzzle/piece'
-import { createGroups, getGroupMembers, moveGroup, bringGroupToFront, trySnap, mergeGroups } from './puzzle/group'
+import { createGroups, getGroupMembers, moveGroup, bringGroupToFront, trySnap, mergeGroups, isSolved } from './puzzle/group'
 import type { GroupState } from './puzzle/group'
 import {
   createViewport,
@@ -52,6 +52,7 @@ export function App() {
   const [rows, setRows] = useState(3)
   const [seed, setSeed] = useState(0)
   const [started, setStarted] = useState(false)
+  const [won, setWon] = useState(false)
 
   // Mutable game state (refs to avoid re-renders)
   const positionsRef = useRef<PiecePosition[]>([])
@@ -89,6 +90,12 @@ export function App() {
   }, [pieces, started])
 
   const reshuffle = () => setSeed(s => s + 1)
+
+  const handlePlayAgain = () => {
+    setImage(null)
+    setStarted(false)
+    setWon(false)
+  }
 
   const handleStart = () => {
     if (!pieces || !image) return
@@ -295,7 +302,10 @@ export function App() {
             for (const ni of snapped) { allFlash.push(...getGroupMembers(groupsRef.current, ni)); mergeGroups(groupsRef.current, pi, ni) }
           }
         }
-        if (allFlash.length > 0) snapFlashRef.current = { pieces: allFlash, startTime: performance.now() }
+        if (allFlash.length > 0) {
+          snapFlashRef.current = { pieces: allFlash, startTime: performance.now() }
+          if (isSolved(groupsRef.current)) setWon(true)
+        }
         selectedRef.current = new Set()
         scheduleRedraw()
         return
@@ -310,6 +320,7 @@ export function App() {
         const flash = getGroupMembers(groupsRef.current, pieceIndex)
         for (const ni of snapped) { flash.push(...getGroupMembers(groupsRef.current, ni)); mergeGroups(groupsRef.current, pieceIndex, ni) }
         snapFlashRef.current = { pieces: flash, startTime: performance.now() }
+        if (isSolved(groupsRef.current)) setWon(true)
       }
       scheduleRedraw()
     }
@@ -397,6 +408,14 @@ export function App() {
           </div>
           <div class="grid-controls-info">
             {cols} &times; {rows} = {cols * rows} pieces
+          </div>
+        </div>
+      )}
+      {won && (
+        <div class="win-overlay">
+          <div class="win-message">
+            <h1>You win!</h1>
+            <button class="start-btn" onClick={handlePlayAgain}>Play Again</button>
           </div>
         </div>
       )}
