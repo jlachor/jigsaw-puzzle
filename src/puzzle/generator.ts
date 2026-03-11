@@ -66,6 +66,11 @@ export function drawPieceOutline(
   const hEnd = cellW * 5 / 8
   const vStart = cellH * 3 / 8
   const vEnd = cellH * 5 / 8
+  // Neck pinch factor: how far along the perpendicular before the curve widens
+  const neck = 0.4
+  // Head control points overshoot the neck region for a wider head (~1/3 of edge at widest)
+  const headSpread = cellW * 0.15
+  const headSpreadV = cellH * 0.15
 
   ctx.beginPath()
 
@@ -74,11 +79,18 @@ export function drawPieceOutline(
   if (edges.top === 0) {
     ctx.lineTo(x + cellW, y)
   } else {
-    const dir = -edges.top // top: outward is -Y, so +1 tab goes up (negative)
+    const d = -edges.top * tabH // +1 tab → upward (negative Y)
     ctx.lineTo(x + hStart, y)
-    ctx.lineTo(x + hStart, y + dir * tabH)
-    ctx.lineTo(x + hEnd, y + dir * tabH)
-    ctx.lineTo(x + hEnd, y)
+    ctx.bezierCurveTo(
+      x + hStart, y + d * neck,
+      x + hStart - headSpread, y + d,
+      x + cellW * 0.5, y + d,
+    )
+    ctx.bezierCurveTo(
+      x + hEnd + headSpread, y + d,
+      x + hEnd, y + d * neck,
+      x + hEnd, y,
+    )
     ctx.lineTo(x + cellW, y)
   }
 
@@ -86,11 +98,18 @@ export function drawPieceOutline(
   if (edges.right === 0) {
     ctx.lineTo(x + cellW, y + cellH)
   } else {
-    const dir = edges.right // right: outward is +X
+    const d = edges.right * tabW // +1 tab → rightward (positive X)
     ctx.lineTo(x + cellW, y + vStart)
-    ctx.lineTo(x + cellW + dir * tabW, y + vStart)
-    ctx.lineTo(x + cellW + dir * tabW, y + vEnd)
-    ctx.lineTo(x + cellW, y + vEnd)
+    ctx.bezierCurveTo(
+      x + cellW + d * neck, y + vStart,
+      x + cellW + d, y + vStart - headSpreadV,
+      x + cellW + d, y + cellH * 0.5,
+    )
+    ctx.bezierCurveTo(
+      x + cellW + d, y + vEnd + headSpreadV,
+      x + cellW + d * neck, y + vEnd,
+      x + cellW, y + vEnd,
+    )
     ctx.lineTo(x + cellW, y + cellH)
   }
 
@@ -98,11 +117,18 @@ export function drawPieceOutline(
   if (edges.bottom === 0) {
     ctx.lineTo(x, y + cellH)
   } else {
-    const dir = edges.bottom // bottom: outward is +Y
+    const d = edges.bottom * tabH // +1 tab → downward (positive Y)
     ctx.lineTo(x + hEnd, y + cellH)
-    ctx.lineTo(x + hEnd, y + cellH + dir * tabH)
-    ctx.lineTo(x + hStart, y + cellH + dir * tabH)
-    ctx.lineTo(x + hStart, y + cellH)
+    ctx.bezierCurveTo(
+      x + hEnd, y + cellH + d * neck,
+      x + hEnd + headSpread, y + cellH + d,
+      x + cellW * 0.5, y + cellH + d,
+    )
+    ctx.bezierCurveTo(
+      x + hStart - headSpread, y + cellH + d,
+      x + hStart, y + cellH + d * neck,
+      x + hStart, y + cellH,
+    )
     ctx.lineTo(x, y + cellH)
   }
 
@@ -110,11 +136,18 @@ export function drawPieceOutline(
   if (edges.left === 0) {
     ctx.lineTo(x, y)
   } else {
-    const dir = -edges.left // left: outward is -X, so +1 tab goes left (negative)
+    const d = -edges.left * tabW // +1 tab → leftward (negative X)
     ctx.lineTo(x, y + vEnd)
-    ctx.lineTo(x + dir * tabW, y + vEnd)
-    ctx.lineTo(x + dir * tabW, y + vStart)
-    ctx.lineTo(x, y + vStart)
+    ctx.bezierCurveTo(
+      x + d * neck, y + vEnd,
+      x + d, y + vEnd + headSpreadV,
+      x + d, y + cellH * 0.5,
+    )
+    ctx.bezierCurveTo(
+      x + d, y + vStart - headSpreadV,
+      x + d * neck, y + vStart,
+      x, y + vStart,
+    )
     ctx.lineTo(x, y)
   }
 

@@ -82,19 +82,21 @@ A browser-based jigsaw puzzle application that lets users create puzzles from an
 Each edge is drawn as a path from point A to point B (e.g. top-left corner to top-right corner of a piece):
 
 ```
-A ——— 1/3 ——— neck start
+A ——— 3/8 ——— neck start
                  \
-                  curve down into neck
-                  curve out to form round head
-                  curve back to neck
+                  bezier 1: neck (narrow) → head (wide, round)
+
+                  bezier 2: head (wide, round) → neck (narrow)
                  /
-              neck end ——— 2/3 ——— B
+              neck end ——— 5/8 ——— B
 ```
 
-- First straight segment: A to 1/3 of the edge
-- Bezier curves forming the tab head (bulging outward for +1, inward for −1)
-- Last straight segment: 2/3 of the edge to B
-- Control points are tuned to produce a round, natural-looking tab — not too pointy, not too square
+- Straight segment: A to 3/8 of edge (neck start)
+- **Bezier 1** (left half): control points create narrow neck (factor `0.4` along perpendicular) then widen to round head (headSpread = `0.15 * edgeLength` beyond neck)
+- **Bezier 2** (right half): mirror of bezier 1, head back to narrow neck
+- Straight segment: 5/8 of edge (neck end) to B
+- `dir` multiplier flips perpendicular direction for tabs (+1) vs blanks (−1)
+- Head is wider than neck, creating classic mushroom/bulb jigsaw profile
 
 ### Reshuffle
 - "Reshuffle" regenerates all random +1/−1 assignments and redraws the preview
@@ -109,15 +111,16 @@ Two screens:
 
 Grid size controls and cut preview are on the same screen with live feedback (no wizard steps).
 
-## Planned Project Structure
+## Project Structure
 
 ```
 src/
-  main.tsx           — entry, mounts App
-  app.tsx            — root component, screen routing, canvas
-  app.css            — UI overlay styles
-  index.css          — global reset, body styles
-  components/        — Preact UI components (as needed in later steps)
-  puzzle/            — generator, piece model, group, board logic
-  utils/             — geometry helpers, hit testing
+  main.tsx              — entry, mounts App
+  app.tsx               — root component, canvas, UI overlays, state
+  app.css               — overlay styles (upload, grid controls, reshuffle)
+  index.css             — global reset, body styles
+  puzzle/
+    generator.ts        — edge data generation, piece outline drawing (bezier)
+  components/           — (future) Preact UI components
+  utils/                — (future) geometry helpers, hit testing
 ```
