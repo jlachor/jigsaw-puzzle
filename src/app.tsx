@@ -8,7 +8,7 @@ import {
   hitTestPieces,
   drawPieceHighlight,
 } from './puzzle/piece'
-import type { PiecePosition } from './puzzle/piece'
+import type { PieceCanvas, PiecePosition } from './puzzle/piece'
 import { createGroups, getGroupMembers, moveGroup, bringGroupToFront, trySnap, mergeGroups } from './puzzle/group'
 import type { GroupState } from './puzzle/group'
 import './app.css'
@@ -25,6 +25,27 @@ interface PanState {
   startY: number
   startPanX: number
   startPanY: number
+}
+
+interface MarqueeState {
+  /** Screen coordinates */
+  startX: number
+  startY: number
+  endX: number
+  endY: number
+}
+
+interface BulkDragState {
+  /** Last mouse position in world (source-image) coords */
+  lastWorldX: number
+  lastWorldY: number
+}
+
+/** Get the center of a piece in world (source-image) coordinates. */
+function getPieceCenter(piece: PieceCanvas, pos: PiecePosition): { x: number, y: number } {
+  const cellW = piece.canvas.width - 2 * piece.padX
+  const cellH = piece.canvas.height - 2 * piece.padY
+  return { x: pos.x + cellW / 2, y: pos.y + cellH / 2 }
 }
 
 export function App() {
@@ -47,6 +68,11 @@ export function App() {
   const panRef = useRef({ x: 0, y: 0 })
   const panningRef = useRef<PanState | null>(null)
   const spaceDownRef = useRef(false)
+
+  // Marquee & selection state
+  const marqueeRef = useRef<MarqueeState | null>(null)
+  const selectedRef = useRef<Set<number>>(new Set())
+  const bulkDragRef = useRef<BulkDragState | null>(null)
 
   const edges = useMemo(
     () => image ? generateEdges(cols, rows) : null,
@@ -117,6 +143,16 @@ export function App() {
       }
     }
 
+    /** Convert screen coords to world (source-image) coords */
+    const screenToWorld = (sx: number, sy: number) => {
+      const t = getTransform()
+      if (!t) return { x: 0, y: 0 }
+      return {
+        x: (sx - t.offsetX) / t.scale,
+        y: (sy - t.offsetY) / t.scale,
+      }
+    }
+
     // Zoom limits: 0.25 → image at ~20% of viewport; 1.5 → slightly past default
     const MIN_ZOOM = 0.25
     const MAX_ZOOM = 1.5
@@ -152,6 +188,7 @@ export function App() {
 
         drawPieces(ctx, pieces, positionsRef.current, drawOrderRef.current, t.offsetX, t.offsetY, t.scale)
 
+        // Highlight dragged piece/group
         if (dragRef.current) {
           const members = getGroupMembers(groupsRef.current, dragRef.current.pieceIndex)
           for (const mi of members) {
@@ -160,6 +197,31 @@ export function App() {
               t.offsetX, t.offsetY, t.scale,
             )
           }
+        }
+
+        // Highlight selected pieces (blue glow)
+        const selected = selectedRef.current
+        if (selected.size > 0) {
+          for (const pi of selected) {
+            const p = pieces[pi]
+            const pos = positionsRef.current[pi]
+            const srcCellW = p.canvas.width - 2 * p.padX
+            const srcCellH = p.canvas.height - 2 * p.padY
+            tracePieceOutline(
+              ctx,
+              t.offsetX + pos.x * t.scale,
+              t.offsetY + pos.y * t.scale,
+              srcCellW * t.scale, srcCellH * t.scale,
+              p.edges,
+            )
+            ctx.strokeStyle = 'rgba(100, 180, 255, 0.7)'
+            ctx.lineWidth = 2
+            ctx.shadowColor = 'rgba(100, 180, 255, 0.5)'
+            ctx.shadowBlur = 10
+            ctx.stroke()
+          }
+          ctx.shadowColor = 'transparent'
+          ctx.shadowBlur = 0
         }
 
         // Snap flash: green glow that fades over 300ms
@@ -195,6 +257,25 @@ export function App() {
           }
         }
       }
+
+      // Draw marquee rectangle
+      const mq = marqueeRef.current
+      if (mq) {
+        const ctx2 = canvas.getContext('2d')
+        if (ctx2) {
+          const x = Math.min(mq.startX, mq.endX)
+          const y = Math.min(mq.startY, mq.endY)
+          const w = Math.abs(mq.endX - mq.startX)
+          const h = Math.abs(mq.endY - mq.startY)
+          ctx2.strokeStyle = 'rgba(255, 255, 255, 0.8)'
+          ctx2.lineWidth = 1
+          ctx2.setLineDash([6, 3])
+          ctx2.strokeRect(x, y, w, h)
+          ctx2.setLineDash([])
+          ctx2.fillStyle = 'rgba(100, 180, 255, 0.1)'
+          ctx2.fillRect(x, y, w, h)
+        }
+      }
     }
 
     redrawRef.current = redraw
@@ -226,6 +307,30 @@ export function App() {
       )
 
       if (hit >= 0) {
+        const selected = selectedRef.current
+
+        // If we hit a selected piece, start bulk drag
+        if (selected.has(hit)) {
+          const world = screenToWorld(e.clientX, e.clientY)
+          bulkDragRef.current = { lastWorldX: world.x, lastWorldY: world.y }
+
+          // Bring all selected groups to front
+          const seenGroups = new Set<number>()
+          for (const pi of selected) {
+            const gid = groupsRef.current.groupOf[pi]
+            if (!seenGroups.has(gid)) {
+              seenGroups.add(gid)
+              bringGroupToFront(groupsRef.current, drawOrderRef.current, pi)
+            }
+          }
+
+          scheduleRedraw()
+          return
+        }
+
+        // Hit a non-selected piece — clear selection, start single drag
+        selected.clear()
+
         const pos = positionsRef.current[hit]
         dragRef.current = {
           pieceIndex: hit,
@@ -233,10 +338,16 @@ export function App() {
           offsetY: pos.y - (e.clientY - t.offsetY) / t.scale,
         }
 
-        // Bring group to front (for single pieces this is the same as before)
         bringGroupToFront(groupsRef.current, drawOrderRef.current, hit)
-
         scheduleRedraw()
+      } else {
+        // No hit — start marquee
+        marqueeRef.current = {
+          startX: e.clientX,
+          startY: e.clientY,
+          endX: e.clientX,
+          endY: e.clientY,
+        }
       }
     }
 
@@ -250,6 +361,36 @@ export function App() {
         return
       }
 
+      // Marquee drawing
+      if (marqueeRef.current) {
+        marqueeRef.current.endX = e.clientX
+        marqueeRef.current.endY = e.clientY
+        scheduleRedraw()
+        return
+      }
+
+      // Bulk drag
+      if (bulkDragRef.current && pieces) {
+        const world = screenToWorld(e.clientX, e.clientY)
+        const dx = world.x - bulkDragRef.current.lastWorldX
+        const dy = world.y - bulkDragRef.current.lastWorldY
+        bulkDragRef.current.lastWorldX = world.x
+        bulkDragRef.current.lastWorldY = world.y
+
+        // Move all selected groups (each group once)
+        const movedGroups = new Set<number>()
+        for (const pi of selectedRef.current) {
+          const gid = groupsRef.current.groupOf[pi]
+          if (!movedGroups.has(gid)) {
+            movedGroups.add(gid)
+            moveGroup(groupsRef.current, positionsRef.current, pi, dx, dy)
+          }
+        }
+        scheduleRedraw()
+        return
+      }
+
+      // Single piece drag
       if (!dragRef.current) return
       const t = getTransform()
       if (!t) return
@@ -269,6 +410,79 @@ export function App() {
         return
       }
 
+      // Marquee release
+      if (marqueeRef.current && pieces) {
+        const mq = marqueeRef.current
+        marqueeRef.current = null
+
+        const dx = Math.abs(mq.endX - mq.startX)
+        const dy = Math.abs(mq.endY - mq.startY)
+
+        if (dx > 5 || dy > 5) {
+          // Compute selection: pieces whose center is inside the marquee rect
+          const t = getTransform()
+          if (t) {
+            const left = Math.min(mq.startX, mq.endX)
+            const right = Math.max(mq.startX, mq.endX)
+            const top = Math.min(mq.startY, mq.endY)
+            const bottom = Math.max(mq.startY, mq.endY)
+
+            const newSelection = new Set<number>()
+            for (let i = 0; i < pieces.length; i++) {
+              const center = getPieceCenter(pieces[i], positionsRef.current[i])
+              const screenX = t.offsetX + center.x * t.scale
+              const screenY = t.offsetY + center.y * t.scale
+              if (screenX >= left && screenX <= right && screenY >= top && screenY <= bottom) {
+                // Select this piece and all members of its group
+                const members = getGroupMembers(groupsRef.current, i)
+                for (const m of members) newSelection.add(m)
+              }
+            }
+            selectedRef.current = newSelection
+          }
+        } else {
+          // Just a click on empty space — clear selection
+          selectedRef.current = new Set()
+        }
+
+        scheduleRedraw()
+        return
+      }
+
+      // Bulk drag release — try snap for each group, then clear selection
+      if (bulkDragRef.current && image) {
+        bulkDragRef.current = null
+
+        const cellW = image.naturalWidth / cols
+        const cellH = image.naturalHeight / rows
+        const snappedGroups = new Set<number>()
+        const allFlashPieces: number[] = []
+
+        for (const pi of selectedRef.current) {
+          const gid = groupsRef.current.groupOf[pi]
+          if (snappedGroups.has(gid)) continue
+          snappedGroups.add(gid)
+
+          const snapped = trySnap(groupsRef.current, positionsRef.current, pi, cols, rows, cellW, cellH)
+          if (snapped.length > 0) {
+            allFlashPieces.push(...getGroupMembers(groupsRef.current, pi))
+            for (const ni of snapped) {
+              allFlashPieces.push(...getGroupMembers(groupsRef.current, ni))
+              mergeGroups(groupsRef.current, pi, ni)
+            }
+          }
+        }
+
+        if (allFlashPieces.length > 0) {
+          snapFlashRef.current = { pieces: allFlashPieces, startTime: performance.now() }
+        }
+
+        selectedRef.current = new Set()
+        scheduleRedraw()
+        return
+      }
+
+      // Single piece drag release
       if (!dragRef.current || !image) return
       const { pieceIndex } = dragRef.current
       dragRef.current = null
@@ -277,7 +491,6 @@ export function App() {
       const cellH = image.naturalHeight / rows
       const snapped = trySnap(groupsRef.current, positionsRef.current, pieceIndex, cols, rows, cellW, cellH)
       if (snapped.length > 0) {
-        // Collect all pieces involved in the snap for the flash
         const flashPieces = getGroupMembers(groupsRef.current, pieceIndex)
         for (const ni of snapped) {
           flashPieces.push(...getGroupMembers(groupsRef.current, ni))

@@ -120,7 +120,7 @@ Build the jigsaw puzzle app iteratively, starting from the simplest possible wor
 - Green glow flash (300ms fade) on all pieces involved in a snap
 - Files: `src/puzzle/group.ts`, `src/app.tsx`
 
-### Step 9: Zoom & Pan
+### Step 9: Zoom & Pan ✅
 - **Zoom**: mouse scroll zooms in/out, centered on the cursor position
   - Zoom-out limit: the puzzle image occupies at most ~20% of the viewport (lots of workspace around the board)
   - Zoom-in limit: slightly closer than the current default view (enough to inspect detail, not excessive)
