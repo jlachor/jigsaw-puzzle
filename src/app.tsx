@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, useMemo } from 'preact/hooks'
-import { generateEdges } from './puzzle/generator'
+import { generateEdges, tracePieceOutline } from './puzzle/generator'
 import {
   renderAllPieces,
   getGridPositions,
@@ -20,6 +20,13 @@ interface DragState {
   offsetY: number
 }
 
+interface PanState {
+  startX: number
+  startY: number
+  startPanX: number
+  startPanY: number
+}
+
 export function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [image, setImage] = useState<HTMLImageElement | null>(null)
@@ -31,7 +38,15 @@ export function App() {
   const drawOrderRef = useRef<number[]>([])
   const groupsRef = useRef<GroupState>(createGroups(0))
   const dragRef = useRef<DragState | null>(null)
+  const snapFlashRef = useRef<{ pieces: number[], startTime: number } | null>(null)
   const redrawRef = useRef<(() => void) | null>(null)
+
+  // Zoom & pan state
+  const zoomRef = useRef(1)
+  /** Screen position of the world origin (0,0) */
+  const panRef = useRef({ x: 0, y: 0 })
+  const panningRef = useRef<PanState | null>(null)
+  const spaceDownRef = useRef(false)
 
   const edges = useMemo(
     () => image ? generateEdges(cols, rows) : null,
@@ -70,19 +85,41 @@ export function App() {
     const canvas = canvasRef.current
     if (!canvas) return
 
-    const getTransform = () => {
-      if (!image) return null
-      const maxW = canvas.width * 0.8
-      const maxH = canvas.height * 0.8
-      const scale = Math.min(maxW / image.naturalWidth, maxH / image.naturalHeight)
-      const drawW = image.naturalWidth * scale
-      const drawH = image.naturalHeight * scale
-      return {
-        scale,
-        offsetX: (canvas.width - drawW) / 2,
-        offsetY: (canvas.height - drawH) / 2,
+    const getBaseScale = () => {
+      if (!image) return 1
+      return Math.min(
+        canvas.width * 0.8 / image.naturalWidth,
+        canvas.height * 0.8 / image.naturalHeight,
+      )
+    }
+
+    /** Reset zoom to 1 and center the image */
+    const resetView = () => {
+      if (!image) return
+      zoomRef.current = 1
+      const baseScale = getBaseScale()
+      const drawW = image.naturalWidth * baseScale
+      const drawH = image.naturalHeight * baseScale
+      panRef.current = {
+        x: (canvas.width - drawW) / 2,
+        y: (canvas.height - drawH) / 2,
       }
     }
+
+    const getTransform = () => {
+      if (!image) return null
+      const baseScale = getBaseScale()
+      const scale = baseScale * zoomRef.current
+      return {
+        scale,
+        offsetX: panRef.current.x,
+        offsetY: panRef.current.y,
+      }
+    }
+
+    // Zoom limits: 0.25 → image at ~20% of viewport; 1.5 → slightly past default
+    const MIN_ZOOM = 0.25
+    const MAX_ZOOM = 1.5
 
     let rafId = 0
     const scheduleRedraw = () => {
@@ -97,6 +134,11 @@ export function App() {
     const redraw = () => {
       canvas.width = window.innerWidth
       canvas.height = window.innerHeight
+
+      // During preview, always re-center (no zoom/pan)
+      if (!started) {
+        resetView()
+      }
 
       const ctx = canvas.getContext('2d')
       if (!ctx) return
@@ -119,12 +161,58 @@ export function App() {
             )
           }
         }
+
+        // Snap flash: green glow that fades over 300ms
+        const flash = snapFlashRef.current
+        if (flash) {
+          const elapsed = performance.now() - flash.startTime
+          const duration = 300
+          if (elapsed < duration) {
+            const alpha = 0.6 * (1 - elapsed / duration)
+            for (const fi of flash.pieces) {
+              const p = pieces[fi]
+              const pos = positionsRef.current[fi]
+              const srcCellW = p.canvas.width - 2 * p.padX
+              const srcCellH = p.canvas.height - 2 * p.padY
+              tracePieceOutline(
+                ctx,
+                t.offsetX + pos.x * t.scale,
+                t.offsetY + pos.y * t.scale,
+                srcCellW * t.scale, srcCellH * t.scale,
+                p.edges,
+              )
+              ctx.strokeStyle = `rgba(100, 255, 100, ${alpha})`
+              ctx.lineWidth = 3
+              ctx.shadowColor = `rgba(100, 255, 100, ${alpha})`
+              ctx.shadowBlur = 16
+              ctx.stroke()
+            }
+            ctx.shadowColor = 'transparent'
+            ctx.shadowBlur = 0
+            scheduleRedraw() // keep animating until fade completes
+          } else {
+            snapFlashRef.current = null
+          }
+        }
       }
     }
 
     redrawRef.current = redraw
 
     const handleMouseDown = (e: MouseEvent) => {
+      // Middle button or Space + left click → pan
+      if (e.button === 1 || (e.button === 0 && spaceDownRef.current)) {
+        e.preventDefault()
+        panningRef.current = {
+          startX: e.clientX,
+          startY: e.clientY,
+          startPanX: panRef.current.x,
+          startPanY: panRef.current.y,
+        }
+        canvas.style.cursor = 'grabbing'
+        return
+      }
+
       if (!started || !pieces) return
       const ctx = canvas.getContext('2d')
       if (!ctx) return
@@ -153,6 +241,15 @@ export function App() {
     }
 
     const handleMouseMove = (e: MouseEvent) => {
+      if (panningRef.current) {
+        panRef.current = {
+          x: panningRef.current.startPanX + (e.clientX - panningRef.current.startX),
+          y: panningRef.current.startPanY + (e.clientY - panningRef.current.startY),
+        }
+        scheduleRedraw()
+        return
+      }
+
       if (!dragRef.current) return
       const t = getTransform()
       if (!t) return
@@ -166,6 +263,12 @@ export function App() {
     }
 
     const handleMouseUp = () => {
+      if (panningRef.current) {
+        panningRef.current = null
+        canvas.style.cursor = spaceDownRef.current ? 'grab' : ''
+        return
+      }
+
       if (!dragRef.current || !image) return
       const { pieceIndex } = dragRef.current
       dragRef.current = null
@@ -173,25 +276,77 @@ export function App() {
       const cellW = image.naturalWidth / cols
       const cellH = image.naturalHeight / rows
       const snapped = trySnap(groupsRef.current, positionsRef.current, pieceIndex, cols, rows, cellW, cellH)
-      for (const ni of snapped) {
-        mergeGroups(groupsRef.current, pieceIndex, ni)
+      if (snapped.length > 0) {
+        // Collect all pieces involved in the snap for the flash
+        const flashPieces = getGroupMembers(groupsRef.current, pieceIndex)
+        for (const ni of snapped) {
+          flashPieces.push(...getGroupMembers(groupsRef.current, ni))
+          mergeGroups(groupsRef.current, pieceIndex, ni)
+        }
+        snapFlashRef.current = { pieces: flashPieces, startTime: performance.now() }
       }
 
       scheduleRedraw()
     }
 
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      if (!image) return
+
+      const baseScale = getBaseScale()
+      const oldZoom = zoomRef.current
+      const factor = e.deltaY > 0 ? 0.9 : 1.1
+      const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, oldZoom * factor))
+      if (newZoom === oldZoom) return
+
+      const oldScale = baseScale * oldZoom
+      const newScale = baseScale * newZoom
+
+      // Keep the world point under the cursor fixed
+      const worldX = (e.clientX - panRef.current.x) / oldScale
+      const worldY = (e.clientY - panRef.current.y) / oldScale
+      panRef.current = {
+        x: e.clientX - worldX * newScale,
+        y: e.clientY - worldY * newScale,
+      }
+      zoomRef.current = newZoom
+
+      scheduleRedraw()
+    }
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && !e.repeat) {
+        e.preventDefault()
+        spaceDownRef.current = true
+        if (!panningRef.current) canvas.style.cursor = 'grab'
+      }
+    }
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        spaceDownRef.current = false
+        if (!panningRef.current) canvas.style.cursor = ''
+      }
+    }
+
     redraw()
     window.addEventListener('resize', scheduleRedraw)
+    window.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('keyup', handleKeyUp)
     canvas.addEventListener('mousedown', handleMouseDown)
     canvas.addEventListener('mousemove', handleMouseMove)
     canvas.addEventListener('mouseup', handleMouseUp)
+    canvas.addEventListener('wheel', handleWheel, { passive: false })
 
     return () => {
       cancelAnimationFrame(rafId)
       window.removeEventListener('resize', scheduleRedraw)
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('keyup', handleKeyUp)
       canvas.removeEventListener('mousedown', handleMouseDown)
       canvas.removeEventListener('mousemove', handleMouseMove)
       canvas.removeEventListener('mouseup', handleMouseUp)
+      canvas.removeEventListener('wheel', handleWheel)
       redrawRef.current = null
     }
   }, [image, pieces, started])

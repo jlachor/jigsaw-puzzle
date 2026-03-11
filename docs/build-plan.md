@@ -114,13 +114,22 @@ Build the jigsaw puzzle app iteratively, starting from the simplest possible wor
 - Already wired in 8a: `bringGroupToFront()` in `handleMouseDown` moves all group members to top
 - Highlight loops over all group members during drag
 
-### Step 8f: Transitive merging + visual feedback
-- On drop, check all group members against their neighbors (not just the dragged piece)
-  — one drop can trigger multiple merges
-- Brief visual feedback on snap (e.g. flash or settle animation)
-- Verify: drag a piece that bridges two existing groups → all three merge
+### Step 8f: Transitive merging + visual feedback ✅
+- `trySnap()` already checks all anchor group members — transitive merging works out of the box
+- Bug fix: snapping moves the **entire neighbor group** rigidly (not just the matched piece)
+- Green glow flash (300ms fade) on all pieces involved in a snap
+- Files: `src/puzzle/group.ts`, `src/app.tsx`
 
-### Step 9: Marquee (RTS box) selection
+### Step 9: Zoom & Pan
+- **Zoom**: mouse scroll zooms in/out, centered on the cursor position
+  - Zoom-out limit: the puzzle image occupies at most ~20% of the viewport (lots of workspace around the board)
+  - Zoom-in limit: slightly closer than the current default view (enough to inspect detail, not excessive)
+- **Pan**: middle-click drag (or Space + left-click drag, Photoshop-style) moves the viewport
+  - Cursor changes to a grab/hand icon while panning
+- All coordinate transforms (hit testing, drag, snap, drawing) must account for current zoom level and pan offset
+- Verify: scroll to zoom out → image shrinks to ~20% of screen; scroll to zoom in → stops just past default; middle-drag to pan around the board
+
+### Step 10: Marquee (RTS box) selection
 - Click-drag on empty space draws a selection rectangle
 - Selection uses **center point** test: a piece or group is selected if its center
   is inside the marquee rectangle
@@ -128,19 +137,10 @@ Build the jigsaw puzzle app iteratively, starting from the simplest possible wor
 - Releasing without dragging clears the selection
 - Verify: draw a box around several pieces → drag them all at once
 
-### Step 10: Board boundaries
-- Define a board area larger than the image (e.g. 2× in each dimension)
-- Pieces/groups cannot be dragged outside the board bounds (clamp position on drop)
-- Verify: try to drag a piece off-screen → it stops at the board edge
-
 ### Step 11: Win detection
 - After each snap, check if all pieces belong to one group
 - Show a simple "You win!" overlay
 - Verify: complete a small puzzle → see win message
-
-### Step 12: Scrollable/pannable board
-- Middle-click or two-finger drag to pan the board
-- Verify: pieces are scattered across a large area, can pan to find them
 
 ### Step 13: Polish & UI shell
 - HUD: piece count, timer
