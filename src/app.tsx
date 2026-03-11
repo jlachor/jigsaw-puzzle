@@ -1,6 +1,12 @@
 import { useRef, useEffect, useState, useMemo } from 'preact/hooks'
 import { generateEdges } from './puzzle/generator'
-import { renderAllPieces, drawPieces } from './puzzle/piece'
+import {
+  renderAllPieces,
+  getGridPositions,
+  getScatteredPositions,
+  drawPieces,
+} from './puzzle/piece'
+import type { PiecePosition } from './puzzle/piece'
 import './app.css'
 
 export function App() {
@@ -10,6 +16,7 @@ export function App() {
   const [rows, setRows] = useState(3)
   const [seed, setSeed] = useState(0)
   const [started, setStarted] = useState(false)
+  const positionsRef = useRef<PiecePosition[]>([])
 
   const edges = useMemo(
     () => image ? generateEdges(cols, rows) : null,
@@ -21,7 +28,24 @@ export function App() {
     [image, cols, rows, edges],
   )
 
+  // Keep grid positions in sync during preview
+  useEffect(() => {
+    if (pieces && !started) {
+      positionsRef.current = getGridPositions(pieces)
+    }
+  }, [pieces, started])
+
   const reshuffle = () => setSeed(s => s + 1)
+
+  const handleStart = () => {
+    if (!pieces || !image) return
+    positionsRef.current = getScatteredPositions(
+      pieces,
+      image.naturalWidth,
+      image.naturalHeight,
+    )
+    setStarted(true)
+  }
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -37,7 +61,7 @@ export function App() {
       ctx.fillStyle = '#2d5a3d'
       ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-      if (image && pieces) {
+      if (image && pieces && positionsRef.current.length > 0) {
         const maxW = canvas.width * 0.8
         const maxH = canvas.height * 0.8
         const scale = Math.min(maxW / image.naturalWidth, maxH / image.naturalHeight)
@@ -46,14 +70,14 @@ export function App() {
         const offsetX = (canvas.width - drawW) / 2
         const offsetY = (canvas.height - drawH) / 2
 
-        drawPieces(ctx, pieces, offsetX, offsetY, scale)
+        drawPieces(ctx, pieces, positionsRef.current, offsetX, offsetY, scale)
       }
     }
 
     redraw()
     window.addEventListener('resize', redraw)
     return () => window.removeEventListener('resize', redraw)
-  }, [image, pieces])
+  }, [image, pieces, started])
 
   const handleFile = (e: Event) => {
     const file = (e.target as HTMLInputElement).files?.[0]
@@ -105,7 +129,7 @@ export function App() {
             <button class="reshuffle-btn" onClick={reshuffle}>
               Reshuffle
             </button>
-            <button class="start-btn" onClick={() => setStarted(true)}>
+            <button class="start-btn" onClick={handleStart}>
               Start
             </button>
           </div>

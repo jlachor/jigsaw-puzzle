@@ -98,6 +98,12 @@ A ——— 3/8 ——— neck start
 - `dir` multiplier flips perpendicular direction for tabs (+1) vs blanks (−1)
 - Head is wider than neck, creating classic mushroom/bulb jigsaw profile
 
+### Hit testing
+- Pieces can overlap when scattered — clicking must select the **topmost** piece only
+- Iterate the pieces array in **reverse order** (last drawn = visually on top), stop at the first hit
+- Use `tracePieceOutline()` to build the bezier path, then `ctx.isPointInPath()` for precise shape-aware testing
+- This respects concave (blank) regions: clicking inside a blank cutout hits the piece behind, not the one with the cutout
+
 ### Reshuffle
 - "Reshuffle" regenerates all random +1/−1 assignments and redraws the preview
 - The geometry (bezier control points) is deterministic given the direction — only the direction is random
@@ -120,7 +126,8 @@ src/
   app.css               — overlay styles (upload, grid controls, reshuffle)
   index.css             — global reset, body styles
   puzzle/
-    generator.ts        — edge data generation, piece outline drawing (bezier)
+    generator.ts        — edge data generation, piece outline tracing (bezier)
+    piece.ts            — pre-render pieces to offscreen canvases, scatter/grid positions, drawing
   components/           — (future) Preact UI components
   utils/                — (future) geometry helpers, hit testing
 ```

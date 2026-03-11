@@ -64,16 +64,18 @@ Build the jigsaw puzzle app iteratively, starting from the simplest possible wor
 - "Start" button hides grid controls and accepts the cut
 - New file: `src/puzzle/piece.ts`
 
-### Step 6a: Scatter pieces on the board
-- After "Start", assign each piece a random (x, y) position on the canvas
-- Draw scattered pieces instead of assembled grid
-- Verify: click Start → pieces are scattered randomly across the board
+### Step 6a: Scatter pieces on the board ✅
+- Positions stored in source-image coordinates (`PiecePosition`), scale-independent
+- `getGridPositions()` for preview, `getScatteredPositions()` on Start (random within image bounds)
+- `drawPieces()` now takes a positions array; `positionsRef` in app keeps mutable state
+- Files: `src/puzzle/piece.ts`, `src/app.tsx`
 
 ### Step 6b: Hit testing (click to select a piece)
 - Translate mouse click to canvas coordinates
-- Iterate pieces in reverse draw order, use `tracePieceOutline()` + `isPointInPath()` to find the clicked piece
+- Iterate pieces in **reverse draw order** (last drawn = topmost) — stop at the first hit so overlapping pieces select only the top one
+- Use `tracePieceOutline()` + `isPointInPath()` to test against the actual jigsaw shape
 - Highlight the selected piece (e.g. glow or tint)
-- Verify: clicking on a piece highlights it; clicking empty space or a blank/concave region does not
+- Verify: clicking on a piece highlights it; clicking empty space or a blank/concave region does not; when pieces overlap, only the topmost piece is selected
 
 ### Step 7: Drag and drop
 - Mouse down on a piece picks it up, mouse move drags, mouse up drops
