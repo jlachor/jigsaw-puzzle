@@ -48,16 +48,28 @@ A browser-based jigsaw puzzle application that lets users create puzzles from an
 | Physics engine (Matter.js) | We're snapping, not simulating physics |
 | SVG / DOM-based rendering | Slow with many clipped image fragments; Canvas is the standard for this |
 
+## Design Decisions
+
+| Decision | Choice | Notes |
+|---|---|---|
+| Piece count | **User-configurable** | User picks grid size (e.g. 4×4 up to 20×20) |
+| Board layout | **Scrollable/pannable board** | Board is larger than the viewport; user pans to find pieces |
+| Persistence | **None in v1** | Closing the tab loses progress; localStorage save planned for v2 |
+
 ## Planned Project Structure
 
 ```
 src/
-  main.ts          — entry, canvas setup, file upload
+  main.ts            — entry, canvas setup, file upload
+  components/        — Preact UI components
+    Upload.tsx       — file upload dialog
+    HUD.tsx          — piece count, timer
+    WinScreen.tsx    — win screen overlay
   puzzle/
-    generator.ts   — cut image into pieces (bezier paths)
-    piece.ts       — piece model + rendering
-    group.ts       — group of snapped pieces
-    board.ts       — drag/drop, snap detection, win check
+    generator.ts     — cut image into pieces (bezier paths)
+    piece.ts         — piece model + rendering
+    group.ts         — group of snapped pieces
+    board.ts         — drag/drop, snap detection, win check
   utils/
-    geometry.ts    — point/rect math, hit testing
+    geometry.ts      — point/rect math, hit testing
 ```
