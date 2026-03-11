@@ -151,15 +151,3 @@ export function tracePieceOutline(
 
   ctx.closePath()
 }
-
-export function drawPieceOutline(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  cellW: number,
-  cellH: number,
-  edges: PieceEdges,
-): void {
-  tracePieceOutline(ctx, x, y, cellW, cellH, edges)
-  ctx.stroke()
-}

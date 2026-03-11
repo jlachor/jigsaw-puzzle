@@ -79,6 +79,16 @@ export function App() {
       }
     }
 
+    let rafId = 0
+    const scheduleRedraw = () => {
+      if (!rafId) {
+        rafId = requestAnimationFrame(() => {
+          rafId = 0
+          redraw()
+        })
+      }
+    }
+
     const redraw = () => {
       canvas.width = window.innerWidth
       canvas.height = window.innerHeight
@@ -136,7 +146,7 @@ export function App() {
           order.push(hit)
         }
 
-        redraw()
+        scheduleRedraw()
       }
     }
 
@@ -150,23 +160,24 @@ export function App() {
         x: (e.clientX - t.offsetX) / t.scale + ox,
         y: (e.clientY - t.offsetY) / t.scale + oy,
       }
-      redraw()
+      scheduleRedraw()
     }
 
     const handleMouseUp = () => {
       if (!dragRef.current) return
       dragRef.current = null
-      redraw()
+      scheduleRedraw()
     }
 
     redraw()
-    window.addEventListener('resize', redraw)
+    window.addEventListener('resize', scheduleRedraw)
     canvas.addEventListener('mousedown', handleMouseDown)
     canvas.addEventListener('mousemove', handleMouseMove)
     canvas.addEventListener('mouseup', handleMouseUp)
 
     return () => {
-      window.removeEventListener('resize', redraw)
+      cancelAnimationFrame(rafId)
+      window.removeEventListener('resize', scheduleRedraw)
       canvas.removeEventListener('mousedown', handleMouseDown)
       canvas.removeEventListener('mousemove', handleMouseMove)
       canvas.removeEventListener('mouseup', handleMouseUp)
@@ -183,6 +194,9 @@ export function App() {
     img.onload = () => {
       URL.revokeObjectURL(url)
       setImage(img)
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
     }
     img.src = url
   }
