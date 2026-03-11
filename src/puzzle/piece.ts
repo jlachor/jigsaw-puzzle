@@ -76,19 +76,23 @@ export function getGridPositions(pieces: PieceCanvas[]): PiecePosition[] {
   })
 }
 
-/** Scatter pieces randomly within the image bounds. */
+/** Scatter pieces randomly over an area 3x the image size. */
 export function getScatteredPositions(
   pieces: PieceCanvas[],
   imageW: number,
   imageH: number,
 ): PiecePosition[] {
+  const areaW = imageW * 3
+  const areaH = imageH * 3
+  const originX = -imageW  // center the 3x area around the image
+  const originY = -imageH
   const margin = Math.min(imageW, imageH) * 0.03
   return pieces.map(p => {
     const srcCellW = p.canvas.width - 2 * p.padX
     const srcCellH = p.canvas.height - 2 * p.padY
     return {
-      x: margin + Math.random() * (imageW - srcCellW - 2 * margin),
-      y: margin + Math.random() * (imageH - srcCellH - 2 * margin),
+      x: originX + margin + Math.random() * (areaW - srcCellW - 2 * margin),
+      y: originY + margin + Math.random() * (areaH - srcCellH - 2 * margin),
     }
   })
 }

@@ -95,6 +95,19 @@ export function App() {
     positionsRef.current = getScatteredPositions(pieces, image.naturalWidth, image.naturalHeight)
     drawOrderRef.current = pieces.map((_, i) => i)
     groupsRef.current = createGroups(pieces.length)
+    // Zoom out to 0.5 so scattered pieces are visible
+    const vp = vpRef.current
+    const canvas = canvasRef.current
+    if (canvas) {
+      resetView(vp, canvas.width, canvas.height, image.naturalWidth, image.naturalHeight)
+      vp.zoom = 0.5
+      const base = Math.min(canvas.width * 0.8 / image.naturalWidth, canvas.height * 0.8 / image.naturalHeight)
+      const scale = base * vp.zoom
+      const drawW = image.naturalWidth * scale
+      const drawH = image.naturalHeight * scale
+      vp.panX = (canvas.width - drawW) / 2
+      vp.panY = (canvas.height - drawH) / 2
+    }
     setStarted(true)
   }
 
