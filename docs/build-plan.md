@@ -31,16 +31,24 @@ Build the jigsaw puzzle app iteratively, starting from the simplest possible wor
 - Upload overlay hides once image is loaded; redraws on window resize
 - Files: `src/app.tsx`, `src/app.css`
 
-### Step 3: Grid size controls + rectangular cut preview
+### Step 3: Grid size controls + rectangular cut preview ✅
 - After image upload, show grid size controls (columns × rows) overlaid on the canvas
-- Draw the image with grid lines overlaid to preview where cuts will be
-- Grid size updates live as the user adjusts controls
-- Verify: upload image → see it with adjustable grid overlay
+- Draw the image with dashed white grid lines overlaid to preview where cuts will be
+- Grid size updates live as the user adjusts sliders (range 2–20)
+- Piece count label: "4 × 3 = 12 pieces"
+- Files: `src/app.tsx`, `src/app.css`
 
 ### Step 4: Jigsaw-shaped edges (bezier tabs)
-- Replace straight grid lines with interlocking bezier tab/blank shapes in the preview
-- "Reshuffle" button regenerates all random tab shapes
+- Generate edge data: each internal edge gets a random direction (+1 tab / −1 blank)
+- Adjacent pieces always have opposite directions (one tab, one blank)
+- Border edges remain straight lines
+- Tab/blank size: 1/3 of edge length, centered on the edge
+- Draw edges with cubic bezier curves: narrow neck, round head (classic jigsaw profile)
+- Replace the straight grid lines in the preview with jigsaw-shaped paths
+- "Reshuffle" button regenerates all random directions and redraws
+- New file: `src/puzzle/generator.ts` — edge data generation + bezier path building
 - Verify: see jigsaw-shaped cut preview; reshuffle changes the shapes
+- See `tech-decisions.md` → "Jigsaw Edge Specification" for full geometry details
 
 ### Step 5: Piece rendering (pre-render to offscreen canvases)
 - Clip each piece from the source image using its jigsaw outline

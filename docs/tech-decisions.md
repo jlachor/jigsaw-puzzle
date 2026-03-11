@@ -56,6 +56,50 @@ A browser-based jigsaw puzzle application that lets users create puzzles from an
 | Board layout | **Scrollable/pannable board** | Board is larger than the viewport; user pans to find pieces |
 | Persistence | **None in v1** | Closing the tab loses progress; localStorage save planned for v2 |
 
+## Jigsaw Edge Specification
+
+### Edge types
+- Each internal edge between two pieces is either a **tab** (+1, protruding outward) or a **blank** (−1, indented inward)
+- Adjacent pieces always have opposite values: if piece A's right edge is +1 (tab), piece B's left edge is −1 (blank)
+- **Border edges** (top of top row, bottom of bottom row, left of left column, right of right column) are **straight lines** — no tabs or blanks
+
+### Edge data model
+- For a grid of `cols × rows`, there are:
+  - `(cols - 1) × rows` vertical internal edges (between left/right neighbors)
+  - `cols × (rows - 1)` horizontal internal edges (between top/bottom neighbors)
+- Each internal edge stores a direction: +1 or −1 (randomly assigned)
+- The piece on one side sees it as +1 (tab), the piece on the other side sees it as −1 (blank)
+
+### Tab/blank geometry
+- The tab protrusion (or blank indentation) is **1/3 of the edge length** in both dimensions
+  - For a horizontal edge of length `cellW`: the tab is `cellW / 3` wide and `cellH / 3` tall
+  - For a vertical edge of length `cellH`: the tab is `cellW / 3` wide and `cellH / 3` tall
+- The tab is centered along the edge
+- Shape is drawn with **cubic bezier curves** to create a smooth, round jigsaw profile
+- The neck (where the tab connects to the piece body) is narrower than the head (the round part) — classic jigsaw shape
+
+### Bezier curve construction (per edge)
+Each edge is drawn as a path from point A to point B (e.g. top-left corner to top-right corner of a piece):
+
+```
+A ——— 1/3 ——— neck start
+                 \
+                  curve down into neck
+                  curve out to form round head
+                  curve back to neck
+                 /
+              neck end ——— 2/3 ——— B
+```
+
+- First straight segment: A to 1/3 of the edge
+- Bezier curves forming the tab head (bulging outward for +1, inward for −1)
+- Last straight segment: 2/3 of the edge to B
+- Control points are tuned to produce a round, natural-looking tab — not too pointy, not too square
+
+### Reshuffle
+- "Reshuffle" regenerates all random +1/−1 assignments and redraws the preview
+- The geometry (bezier control points) is deterministic given the direction — only the direction is random
+
 ## User Flow
 
 Two screens:

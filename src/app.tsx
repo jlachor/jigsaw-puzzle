@@ -4,6 +4,8 @@ import './app.css'
 export function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [image, setImage] = useState<HTMLImageElement | null>(null)
+  const [cols, setCols] = useState(4)
+  const [rows, setRows] = useState(3)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -29,13 +31,39 @@ export function App() {
         const offsetY = (canvas.height - drawH) / 2
 
         ctx.drawImage(image, offsetX, offsetY, drawW, drawH)
+
+        // Draw grid lines
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)'
+        ctx.lineWidth = 2
+        ctx.setLineDash([6, 4])
+
+        const cellW = drawW / cols
+        const cellH = drawH / rows
+
+        for (let i = 1; i < cols; i++) {
+          const x = offsetX + i * cellW
+          ctx.beginPath()
+          ctx.moveTo(x, offsetY)
+          ctx.lineTo(x, offsetY + drawH)
+          ctx.stroke()
+        }
+
+        for (let j = 1; j < rows; j++) {
+          const y = offsetY + j * cellH
+          ctx.beginPath()
+          ctx.moveTo(offsetX, y)
+          ctx.lineTo(offsetX + drawW, y)
+          ctx.stroke()
+        }
+
+        ctx.setLineDash([])
       }
     }
 
     redraw()
     window.addEventListener('resize', redraw)
     return () => window.removeEventListener('resize', redraw)
-  }, [image])
+  }, [image, cols, rows])
 
   const handleFile = (e: Event) => {
     const file = (e.target as HTMLInputElement).files?.[0]
@@ -59,6 +87,35 @@ export function App() {
             Choose an image
             <input type="file" accept="image/*" onChange={handleFile} />
           </label>
+        </div>
+      )}
+      {image && (
+        <div class="grid-controls">
+          <div class="grid-controls-row">
+            <label>
+              Columns: {cols}
+              <input
+                type="range"
+                min={2}
+                max={20}
+                value={cols}
+                onInput={(e) => setCols(Number((e.target as HTMLInputElement).value))}
+              />
+            </label>
+            <label>
+              Rows: {rows}
+              <input
+                type="range"
+                min={2}
+                max={20}
+                value={rows}
+                onInput={(e) => setRows(Number((e.target as HTMLInputElement).value))}
+              />
+            </label>
+          </div>
+          <div class="grid-controls-info">
+            {cols} × {rows} = {cols * rows} pieces
+          </div>
         </div>
       )}
     </>
