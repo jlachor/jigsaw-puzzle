@@ -70,12 +70,12 @@ Build the jigsaw puzzle app iteratively, starting from the simplest possible wor
 - `drawPieces()` now takes a positions array; `positionsRef` in app keeps mutable state
 - Files: `src/puzzle/piece.ts`, `src/app.tsx`
 
-### Step 6b: Hit testing (click to select a piece)
-- Translate mouse click to canvas coordinates
-- Iterate pieces in **reverse draw order** (last drawn = topmost) — stop at the first hit so overlapping pieces select only the top one
-- Use `tracePieceOutline()` + `isPointInPath()` to test against the actual jigsaw shape
-- Highlight the selected piece (e.g. glow or tint)
-- Verify: clicking on a piece highlights it; clicking empty space or a blank/concave region does not; when pieces overlap, only the topmost piece is selected
+### Step 6b: Hit testing (click to select a piece) ✅
+- `hitTestPieces()` iterates reverse draw order, traces outline at display coords, uses `isPointInPath()`
+- `PieceCanvas.edges` added to store shape data for hit testing
+- `drawPieceHighlight()` draws yellow glow stroke with `shadowBlur` around selected piece
+- `selectedPiece` state in app; click handler runs hit test, clicking empty space deselects
+- Files: `src/puzzle/piece.ts`, `src/app.tsx`
 
 ### Step 7: Drag and drop
 - Mouse down on a piece picks it up, mouse move drags, mouse up drops
