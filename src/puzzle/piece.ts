@@ -1,4 +1,4 @@
-import type { EdgeData } from './generator'
+import type { EdgeData, PieceEdges } from './generator'
 import { getPieceEdges, tracePieceOutline } from './generator'
 
 export interface PieceCanvas {
@@ -8,6 +8,8 @@ export interface PieceCanvas {
   /** Padding around the cell in source-image pixels (space for tabs) */
   padX: number
   padY: number
+  /** Edge shape data, needed for hit testing */
+  edges: PieceEdges
 }
 
 /**
@@ -51,7 +53,7 @@ export function renderAllPieces(
       ctx.lineWidth = 2
       ctx.stroke()
 
-      pieces.push({ canvas, col, row, padX, padY })
+      pieces.push({ canvas, col, row, padX, padY, edges })
     }
   }
 
@@ -89,6 +91,60 @@ export function getScatteredPositions(
       y: margin + Math.random() * (imageH - srcCellH - 2 * margin),
     }
   })
+}
+
+/**
+ * Hit-test pieces in reverse draw order (topmost first).
+ * Returns the index of the hit piece, or -1 if none.
+ */
+export function hitTestPieces(
+  ctx: CanvasRenderingContext2D,
+  pieces: PieceCanvas[],
+  positions: PiecePosition[],
+  offsetX: number,
+  offsetY: number,
+  scale: number,
+  mouseX: number,
+  mouseY: number,
+): number {
+  for (let i = pieces.length - 1; i >= 0; i--) {
+    const p = pieces[i]
+    const pos = positions[i]
+    const srcCellW = p.canvas.width - 2 * p.padX
+    const srcCellH = p.canvas.height - 2 * p.padY
+    const cellX = offsetX + pos.x * scale
+    const cellY = offsetY + pos.y * scale
+
+    tracePieceOutline(ctx, cellX, cellY, srcCellW * scale, srcCellH * scale, p.edges)
+    if (ctx.isPointInPath(mouseX, mouseY)) {
+      return i
+    }
+  }
+  return -1
+}
+
+/** Draw a highlight glow around a piece. */
+export function drawPieceHighlight(
+  ctx: CanvasRenderingContext2D,
+  piece: PieceCanvas,
+  pos: PiecePosition,
+  offsetX: number,
+  offsetY: number,
+  scale: number,
+): void {
+  const srcCellW = piece.canvas.width - 2 * piece.padX
+  const srcCellH = piece.canvas.height - 2 * piece.padY
+  const cellX = offsetX + pos.x * scale
+  const cellY = offsetY + pos.y * scale
+
+  tracePieceOutline(ctx, cellX, cellY, srcCellW * scale, srcCellH * scale, piece.edges)
+  ctx.strokeStyle = 'rgba(255, 255, 100, 0.8)'
+  ctx.lineWidth = 3
+  ctx.shadowColor = 'rgba(255, 255, 100, 0.6)'
+  ctx.shadowBlur = 12
+  ctx.stroke()
+  ctx.shadowColor = 'transparent'
+  ctx.shadowBlur = 0
 }
 
 /** Draw all pre-rendered pieces at given positions on the main canvas. */

@@ -5,6 +5,8 @@ import {
   getGridPositions,
   getScatteredPositions,
   drawPieces,
+  hitTestPieces,
+  drawPieceHighlight,
 } from './puzzle/piece'
 import type { PiecePosition } from './puzzle/piece'
 import './app.css'
@@ -16,6 +18,7 @@ export function App() {
   const [rows, setRows] = useState(3)
   const [seed, setSeed] = useState(0)
   const [started, setStarted] = useState(false)
+  const [selectedPiece, setSelectedPiece] = useState(-1)
   const positionsRef = useRef<PiecePosition[]>([])
 
   const edges = useMemo(
@@ -71,13 +74,48 @@ export function App() {
         const offsetY = (canvas.height - drawH) / 2
 
         drawPieces(ctx, pieces, positionsRef.current, offsetX, offsetY, scale)
+
+        if (started && selectedPiece >= 0 && selectedPiece < pieces.length) {
+          drawPieceHighlight(
+            ctx, pieces[selectedPiece], positionsRef.current[selectedPiece],
+            offsetX, offsetY, scale,
+          )
+        }
       }
     }
 
     redraw()
     window.addEventListener('resize', redraw)
-    return () => window.removeEventListener('resize', redraw)
-  }, [image, pieces, started])
+
+    const handleClick = (e: MouseEvent) => {
+      if (!started || !pieces) return
+      const canvas = canvasRef.current
+      if (!canvas) return
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return
+
+      const maxW = canvas.width * 0.8
+      const maxH = canvas.height * 0.8
+      const scale = Math.min(maxW / image!.naturalWidth, maxH / image!.naturalHeight)
+      const drawW = image!.naturalWidth * scale
+      const drawH = image!.naturalHeight * scale
+      const offsetX = (canvas.width - drawW) / 2
+      const offsetY = (canvas.height - drawH) / 2
+
+      const hit = hitTestPieces(
+        ctx, pieces, positionsRef.current,
+        offsetX, offsetY, scale,
+        e.clientX, e.clientY,
+      )
+      setSelectedPiece(hit)
+    }
+
+    canvas.addEventListener('click', handleClick)
+    return () => {
+      window.removeEventListener('resize', redraw)
+      canvas.removeEventListener('click', handleClick)
+    }
+  }, [image, pieces, started, selectedPiece])
 
   const handleFile = (e: Event) => {
     const file = (e.target as HTMLInputElement).files?.[0]
