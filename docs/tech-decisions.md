@@ -71,9 +71,9 @@ A browser-based jigsaw puzzle application that lets users create puzzles from an
 - The piece on one side sees it as +1 (tab), the piece on the other side sees it as −1 (blank)
 
 ### Tab/blank geometry
-- The tab protrusion (or blank indentation) is **1/3 of the edge length** in both dimensions
-  - For a horizontal edge of length `cellW`: the tab is `cellW / 3` wide and `cellH / 3` tall
-  - For a vertical edge of length `cellH`: the tab is `cellW / 3` wide and `cellH / 3` tall
+- The tab protrusion (or blank indentation) is **1/4 of the edge length** in both dimensions
+  - For a horizontal edge of length `cellW`: the tab is `cellW / 4` wide and `cellH / 4` tall
+  - For a vertical edge of length `cellH`: the tab is `cellW / 4` wide and `cellH / 4` tall
 - The tab is centered along the edge
 - Shape is drawn with **cubic bezier curves** to create a smooth, round jigsaw profile
 - The neck (where the tab connects to the piece body) is narrower than the head (the round part) — classic jigsaw shape

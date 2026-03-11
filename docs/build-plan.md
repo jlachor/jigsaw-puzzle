@@ -42,7 +42,7 @@ Build the jigsaw puzzle app iteratively, starting from the simplest possible wor
 - Generate edge data: each internal edge gets a random direction (+1 tab / −1 blank)
 - Adjacent pieces always have opposite directions (one tab, one blank)
 - Border edges = 0 (straight lines)
-- Tab/blank shape: simple rectangle, 1/3 of edge length wide, 1/3 of edge length tall, centered on the edge
+- Tab/blank shape: simple rectangle, 1/4 of edge length wide, 1/4 of edge length tall, centered on the edge
 - Replace the straight grid lines in the preview with tab/blank outlines
 - "Reshuffle" button regenerates all random directions and redraws
 - New file: `src/puzzle/generator.ts` — edge data generation + rectangular path building

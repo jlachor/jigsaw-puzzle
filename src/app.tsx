@@ -1,4 +1,5 @@
-import { useRef, useEffect, useState } from 'preact/hooks'
+import { useRef, useEffect, useState, useMemo } from 'preact/hooks'
+import { generateEdges, getPieceEdges, drawPieceOutline } from './puzzle/generator'
 import './app.css'
 
 export function App() {
@@ -6,6 +7,14 @@ export function App() {
   const [image, setImage] = useState<HTMLImageElement | null>(null)
   const [cols, setCols] = useState(4)
   const [rows, setRows] = useState(3)
+  const [seed, setSeed] = useState(0)
+
+  const edges = useMemo(
+    () => image ? generateEdges(cols, rows) : null,
+    [cols, rows, seed, image],
+  )
+
+  const reshuffle = () => setSeed(s => s + 1)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -32,38 +41,30 @@ export function App() {
 
         ctx.drawImage(image, offsetX, offsetY, drawW, drawH)
 
-        // Draw grid lines
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)'
-        ctx.lineWidth = 2
-        ctx.setLineDash([6, 4])
+        if (edges) {
+          const cellW = drawW / cols
+          const cellH = drawH / rows
 
-        const cellW = drawW / cols
-        const cellH = drawH / rows
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)'
+          ctx.lineWidth = 2
+          ctx.setLineDash([])
 
-        for (let i = 1; i < cols; i++) {
-          const x = offsetX + i * cellW
-          ctx.beginPath()
-          ctx.moveTo(x, offsetY)
-          ctx.lineTo(x, offsetY + drawH)
-          ctx.stroke()
+          for (let row = 0; row < rows; row++) {
+            for (let col = 0; col < cols; col++) {
+              const pieceEdges = getPieceEdges(col, row, cols, rows, edges)
+              const x = offsetX + col * cellW
+              const y = offsetY + row * cellH
+              drawPieceOutline(ctx, x, y, cellW, cellH, pieceEdges)
+            }
+          }
         }
-
-        for (let j = 1; j < rows; j++) {
-          const y = offsetY + j * cellH
-          ctx.beginPath()
-          ctx.moveTo(offsetX, y)
-          ctx.lineTo(offsetX + drawW, y)
-          ctx.stroke()
-        }
-
-        ctx.setLineDash([])
       }
     }
 
     redraw()
     window.addEventListener('resize', redraw)
     return () => window.removeEventListener('resize', redraw)
-  }, [image, cols, rows])
+  }, [image, cols, rows, edges])
 
   const handleFile = (e: Event) => {
     const file = (e.target as HTMLInputElement).files?.[0]
@@ -112,6 +113,9 @@ export function App() {
                 onInput={(e) => setRows(Number((e.target as HTMLInputElement).value))}
               />
             </label>
+            <button class="reshuffle-btn" onClick={reshuffle}>
+              Reshuffle
+            </button>
           </div>
           <div class="grid-controls-info">
             {cols} × {rows} = {cols * rows} pieces
