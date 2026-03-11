@@ -1,4 +1,4 @@
-import type { PieceCanvas, PiecePosition } from './piece'
+import type { PiecePosition } from './piece'
 
 /**
  * Group state: maps each piece index to its group ID.
@@ -81,4 +81,50 @@ export function getGridNeighbors(
   if (row > 0) neighbors.push(pieceIndex - cols)     // top
   if (row < rows - 1) neighbors.push(pieceIndex + cols) // bottom
   return neighbors
+}
+
+/**
+ * Try to snap neighbors to the dropped piece (anchor).
+ * The dropped piece stays put. Each grid-adjacent neighbor within half a cell
+ * distance is moved to align with the anchor. Supports multi-directional snap
+ * (e.g. left AND top neighbor can both snap at once).
+ *
+ * Returns the indices of all neighbors that were snapped.
+ */
+export function trySnap(
+  positions: PiecePosition[],
+  pieceIndex: number,
+  cols: number,
+  rows: number,
+  cellW: number,
+  cellH: number,
+): number[] {
+  const pos = positions[pieceIndex]
+  const col = pieceIndex % cols
+  const row = Math.floor(pieceIndex / cols)
+  const threshold = Math.min(cellW, cellH) / 2
+
+  const neighbors = getGridNeighbors(pieceIndex, cols, rows)
+  const snapped: number[] = []
+
+  for (const ni of neighbors) {
+    const nPos = positions[ni]
+    const nCol = ni % cols
+    const nRow = Math.floor(ni / cols)
+
+    // Where the neighbor should be, relative to the anchor piece
+    const expectedX = pos.x + (nCol - col) * cellW
+    const expectedY = pos.y + (nRow - row) * cellH
+
+    const dx = nPos.x - expectedX
+    const dy = nPos.y - expectedY
+    const dist = Math.sqrt(dx * dx + dy * dy)
+
+    if (dist < threshold) {
+      positions[ni] = { x: expectedX, y: expectedY }
+      snapped.push(ni)
+    }
+  }
+
+  return snapped
 }

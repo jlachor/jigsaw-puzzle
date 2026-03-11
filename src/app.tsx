@@ -9,7 +9,7 @@ import {
   drawPieceHighlight,
 } from './puzzle/piece'
 import type { PiecePosition } from './puzzle/piece'
-import { createGroups, getGroupMembers, moveGroup, bringGroupToFront } from './puzzle/group'
+import { createGroups, getGroupMembers, moveGroup, bringGroupToFront, trySnap } from './puzzle/group'
 import type { GroupState } from './puzzle/group'
 import './app.css'
 
@@ -166,8 +166,14 @@ export function App() {
     }
 
     const handleMouseUp = () => {
-      if (!dragRef.current) return
+      if (!dragRef.current || !image) return
+      const { pieceIndex } = dragRef.current
       dragRef.current = null
+
+      const cellW = image.naturalWidth / cols
+      const cellH = image.naturalHeight / rows
+      trySnap(positionsRef.current, pieceIndex, cols, rows, cellW, cellH)
+
       scheduleRedraw()
     }
 

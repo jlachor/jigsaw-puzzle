@@ -56,6 +56,7 @@ A browser-based jigsaw puzzle application that lets users create puzzles from an
 | Board layout | **Scrollable/pannable board** | Board is larger than the viewport; user pans to find pieces |
 | Snap model | **Neighbor snap only** | Pieces snap to adjacent neighbors anywhere on the board — no snap-to-grid/solved-position |
 | Snap threshold | **Half cell size** | Pieces must "meet halfway" to snap; prevents frustration (too tight) and accidental joins (too loose) |
+| Snap anchor | **Dropped piece is reference** | The dropped piece stays put; qualifying neighbors move to align with it (supports multi-directional snap) |
 | Selection | **Marquee (RTS box select)** | Click-drag on empty space draws a selection rectangle; separate from permanent groups |
 | Marquee hit test | **Center point** | A piece/group is selected only if its center falls inside the marquee rectangle |
 | Board boundaries | **Enforced** | Pieces/groups cannot be dragged outside the board area |

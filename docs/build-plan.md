@@ -86,20 +86,20 @@ Build the jigsaw puzzle app iteratively, starting from the simplest possible wor
 - Replaced click-to-select with full drag; yellow highlight shown on dragged piece
 - Files: `src/puzzle/piece.ts`, `src/app.tsx`
 
-### Step 8a: Group data model
-- Introduce a `Group` structure (set of piece indices + shared position offset)
-- Every piece starts in its own single-piece group
+### Step 8a: Group data model ✅
+- Introduced `GroupState` (piece index → group ID), every piece starts as its own group
+- `moveGroup()`, `bringGroupToFront()`, `getGroupMembers()`, `getGridNeighbors()` helpers
 - Dragging and drawing work through groups instead of raw piece indices
-- No behavior change yet — everything looks and feels the same
+- No behavior change — game plays identically to before
 - New file: `src/puzzle/group.ts`
-- Verify: game plays identically to before
 
 ### Step 8b: Snap detection
-- On mouse-up, check if the dropped piece has any grid-adjacent neighbor within
-  half a cell distance (pieces must "meet halfway")
-- If so, snap the piece position so edges align perfectly
-- No group merging yet — the piece just teleports to the correct offset
-- Verify: drag piece A near its neighbor B → A snaps flush against B
+- On mouse-up, check all grid-adjacent neighbors of the dropped piece
+- The dropped piece is the **anchor/reference** — it does not move
+- Each neighbor within half a cell distance snaps to align with the dropped piece
+  (multi-directional: can snap left AND top neighbor simultaneously)
+- No group merging yet — neighbors teleport to correct offset but remain independent
+- Verify: drop piece A between neighbors B and C → both B and C snap flush against A
 
 ### Step 8c: Group merging
 - After a snap, merge the two pieces' groups into one
