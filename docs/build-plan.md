@@ -93,27 +93,26 @@ Build the jigsaw puzzle app iteratively, starting from the simplest possible wor
 - No behavior change — game plays identically to before
 - New file: `src/puzzle/group.ts`
 
-### Step 8b: Snap detection
+### Step 8b: Snap detection ✅
 - On mouse-up, check all grid-adjacent neighbors of the dropped piece
 - The dropped piece is the **anchor/reference** — it does not move
 - Each neighbor within half a cell distance snaps to align with the dropped piece
   (multi-directional: can snap left AND top neighbor simultaneously)
-- No group merging yet — neighbors teleport to correct offset but remain independent
-- Verify: drop piece A between neighbors B and C → both B and C snap flush against A
+- `trySnap()` returns list of snapped neighbor indices
+- Files: `src/puzzle/group.ts`, `src/app.tsx`
 
-### Step 8c: Group merging
-- After a snap, merge the two pieces' groups into one
-- All pieces in a group store positions relative to each other (internally rigid)
-- Verify: snap A to B → they're now in the same group
+### Step 8c: Group merging ✅
+- `mergeGroups()` called after each snap — absorbs snapped neighbor's group into anchor's group
+- All pieces in a group maintain rigid relative positions
+- Files: `src/puzzle/group.ts`, `src/app.tsx`
 
-### Step 8d: Group dragging
-- Clicking any piece in a group starts dragging the entire group
-- All member positions update together during mousemove
-- Verify: snap two pieces → drag one → both move together
+### Step 8d: Group dragging ✅
+- Already wired in 8a: `moveGroup()` in `handleMouseMove` moves all group members by the same delta
+- Clicking any piece in a group drags the entire group
 
-### Step 8e: Group z-ordering
-- When a group is picked up, all its members move to the front of the draw order
-- Verify: snap two pieces, drag them over a loose piece → the group draws on top
+### Step 8e: Group z-ordering ✅
+- Already wired in 8a: `bringGroupToFront()` in `handleMouseDown` moves all group members to top
+- Highlight loops over all group members during drag
 
 ### Step 8f: Transitive merging + visual feedback
 - On drop, check all group members against their neighbors (not just the dragged piece)

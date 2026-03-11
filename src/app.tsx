@@ -9,7 +9,7 @@ import {
   drawPieceHighlight,
 } from './puzzle/piece'
 import type { PiecePosition } from './puzzle/piece'
-import { createGroups, getGroupMembers, moveGroup, bringGroupToFront, trySnap } from './puzzle/group'
+import { createGroups, getGroupMembers, moveGroup, bringGroupToFront, trySnap, mergeGroups } from './puzzle/group'
 import type { GroupState } from './puzzle/group'
 import './app.css'
 
@@ -172,7 +172,10 @@ export function App() {
 
       const cellW = image.naturalWidth / cols
       const cellH = image.naturalHeight / rows
-      trySnap(positionsRef.current, pieceIndex, cols, rows, cellW, cellH)
+      const snapped = trySnap(groupsRef.current, positionsRef.current, pieceIndex, cols, rows, cellW, cellH)
+      for (const ni of snapped) {
+        mergeGroups(groupsRef.current, pieceIndex, ni)
+      }
 
       scheduleRedraw()
     }

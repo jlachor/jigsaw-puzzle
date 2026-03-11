@@ -84,14 +84,17 @@ export function getGridNeighbors(
 }
 
 /**
- * Try to snap neighbors to the dropped piece (anchor).
- * The dropped piece stays put. Each grid-adjacent neighbor within half a cell
- * distance is moved to align with the anchor. Supports multi-directional snap
- * (e.g. left AND top neighbor can both snap at once).
+ * Try to snap neighbor groups to the anchor group.
  *
- * Returns the indices of all neighbors that were snapped.
+ * Checks are piece-to-piece: for each piece in the anchor group, we check each
+ * of its grid neighbors individually. But when a match is found, we move the
+ * neighbor's **entire group** rigidly so that specific neighbor aligns correctly.
+ *
+ * The anchor group stays put. Returns the indices of snapped neighbor pieces
+ * (one per snapped group).
  */
 export function trySnap(
+  state: GroupState,
   positions: PiecePosition[],
   pieceIndex: number,
   cols: number,
@@ -99,32 +102,63 @@ export function trySnap(
   cellW: number,
   cellH: number,
 ): number[] {
-  const pos = positions[pieceIndex]
-  const col = pieceIndex % cols
-  const row = Math.floor(pieceIndex / cols)
   const threshold = Math.min(cellW, cellH) / 2
+  const anchorGid = state.groupOf[pieceIndex]
+  const anchorMembers = getGroupMembers(state, pieceIndex)
 
-  const neighbors = getGridNeighbors(pieceIndex, cols, rows)
   const snapped: number[] = []
+  const snappedGids = new Set<number>()
 
-  for (const ni of neighbors) {
-    const nPos = positions[ni]
-    const nCol = ni % cols
-    const nRow = Math.floor(ni / cols)
+  for (const ai of anchorMembers) {
+    const aPos = positions[ai]
+    const aCol = ai % cols
+    const aRow = Math.floor(ai / cols)
 
-    // Where the neighbor should be, relative to the anchor piece
-    const expectedX = pos.x + (nCol - col) * cellW
-    const expectedY = pos.y + (nRow - row) * cellH
+    for (const ni of getGridNeighbors(ai, cols, rows)) {
+      const nGid = state.groupOf[ni]
+      // Skip pieces already in anchor group or in an already-snapped group
+      if (nGid === anchorGid || snappedGids.has(nGid)) continue
 
-    const dx = nPos.x - expectedX
-    const dy = nPos.y - expectedY
-    const dist = Math.sqrt(dx * dx + dy * dy)
+      const nPos = positions[ni]
+      const nCol = ni % cols
+      const nRow = Math.floor(ni / cols)
 
-    if (dist < threshold) {
-      positions[ni] = { x: expectedX, y: expectedY }
-      snapped.push(ni)
+      // Where the neighbor should be, relative to this anchor member
+      const expectedX = aPos.x + (nCol - aCol) * cellW
+      const expectedY = aPos.y + (nRow - aRow) * cellH
+
+      const dx = nPos.x - expectedX
+      const dy = nPos.y - expectedY
+      const dist = Math.sqrt(dx * dx + dy * dy)
+
+      if (dist < threshold) {
+        // Shift the entire neighbor group so this piece aligns
+        const nMembers = getGroupMembers(state, ni)
+        for (const mi of nMembers) {
+          positions[mi] = { x: positions[mi].x - dx, y: positions[mi].y - dy }
+        }
+        snapped.push(ni)
+        snappedGids.add(nGid)
+      }
     }
   }
 
   return snapped
+}
+
+/**
+ * Merge the group of `otherPiece` into the group of `anchorPiece`.
+ * All pieces that belonged to otherPiece's group now share anchorPiece's group ID.
+ */
+export function mergeGroups(
+  state: GroupState,
+  anchorPiece: number,
+  otherPiece: number,
+): void {
+  const targetGid = state.groupOf[anchorPiece]
+  const sourceGid = state.groupOf[otherPiece]
+  if (targetGid === sourceGid) return
+  for (let i = 0; i < state.groupOf.length; i++) {
+    if (state.groupOf[i] === sourceGid) state.groupOf[i] = targetGid
+  }
 }
