@@ -101,13 +101,15 @@ export function hitTestPieces(
   ctx: CanvasRenderingContext2D,
   pieces: PieceCanvas[],
   positions: PiecePosition[],
+  drawOrder: number[],
   offsetX: number,
   offsetY: number,
   scale: number,
   mouseX: number,
   mouseY: number,
 ): number {
-  for (let i = pieces.length - 1; i >= 0; i--) {
+  for (let j = drawOrder.length - 1; j >= 0; j--) {
+    const i = drawOrder[j]
     const p = pieces[i]
     const pos = positions[i]
     const srcCellW = p.canvas.width - 2 * p.padX
@@ -152,11 +154,12 @@ export function drawPieces(
   ctx: CanvasRenderingContext2D,
   pieces: PieceCanvas[],
   positions: PiecePosition[],
+  drawOrder: number[],
   offsetX: number,
   offsetY: number,
   scale: number,
 ): void {
-  for (let i = 0; i < pieces.length; i++) {
+  for (const i of drawOrder) {
     const p = pieces[i]
     const pos = positions[i]
     ctx.drawImage(

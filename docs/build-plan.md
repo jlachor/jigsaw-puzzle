@@ -77,10 +77,14 @@ Build the jigsaw puzzle app iteratively, starting from the simplest possible wor
 - `selectedPiece` state in app; click handler runs hit test, clicking empty space deselects
 - Files: `src/puzzle/piece.ts`, `src/app.tsx`
 
-### Step 7: Drag and drop
-- Mouse down on a piece picks it up, mouse move drags, mouse up drops
-- Bring dragged piece to front (draw order)
-- Verify: can pick up and move jigsaw-shaped pieces around
+### Step 7: Drag and drop ✅
+- `drawOrder` array added to `drawPieces()` and `hitTestPieces()` for z-ordering
+- Drag state kept in refs (not React state) to avoid re-renders on mousemove
+- mousedown: hit test → start drag → bring piece to front of draw order
+- mousemove: update position in source-image coords → redraw
+- mouseup: clear drag → redraw (highlight removed)
+- Replaced click-to-select with full drag; yellow highlight shown on dragged piece
+- Files: `src/puzzle/piece.ts`, `src/app.tsx`
 
 ### Step 8: Snap to correct position
 - When a piece is dropped close to its correct position, snap it there

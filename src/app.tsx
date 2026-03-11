@@ -11,6 +11,13 @@ import {
 import type { PiecePosition } from './puzzle/piece'
 import './app.css'
 
+interface DragState {
+  pieceIndex: number
+  /** Offset between mouse and piece position, in source-image coords */
+  offsetX: number
+  offsetY: number
+}
+
 export function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [image, setImage] = useState<HTMLImageElement | null>(null)
@@ -18,8 +25,10 @@ export function App() {
   const [rows, setRows] = useState(3)
   const [seed, setSeed] = useState(0)
   const [started, setStarted] = useState(false)
-  const [selectedPiece, setSelectedPiece] = useState(-1)
   const positionsRef = useRef<PiecePosition[]>([])
+  const drawOrderRef = useRef<number[]>([])
+  const dragRef = useRef<DragState | null>(null)
+  const redrawRef = useRef<(() => void) | null>(null)
 
   const edges = useMemo(
     () => image ? generateEdges(cols, rows) : null,
@@ -31,10 +40,11 @@ export function App() {
     [image, cols, rows, edges],
   )
 
-  // Keep grid positions in sync during preview
+  // Keep grid positions and draw order in sync during preview
   useEffect(() => {
     if (pieces && !started) {
       positionsRef.current = getGridPositions(pieces)
+      drawOrderRef.current = pieces.map((_, i) => i)
     }
   }, [pieces, started])
 
@@ -47,12 +57,27 @@ export function App() {
       image.naturalWidth,
       image.naturalHeight,
     )
+    drawOrderRef.current = pieces.map((_, i) => i)
     setStarted(true)
   }
 
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
+
+    const getTransform = () => {
+      if (!image) return null
+      const maxW = canvas.width * 0.8
+      const maxH = canvas.height * 0.8
+      const scale = Math.min(maxW / image.naturalWidth, maxH / image.naturalHeight)
+      const drawW = image.naturalWidth * scale
+      const drawH = image.naturalHeight * scale
+      return {
+        scale,
+        offsetX: (canvas.width - drawW) / 2,
+        offsetY: (canvas.height - drawH) / 2,
+      }
+    }
 
     const redraw = () => {
       canvas.width = window.innerWidth
@@ -64,58 +89,90 @@ export function App() {
       ctx.fillStyle = '#2d5a3d'
       ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-      if (image && pieces && positionsRef.current.length > 0) {
-        const maxW = canvas.width * 0.8
-        const maxH = canvas.height * 0.8
-        const scale = Math.min(maxW / image.naturalWidth, maxH / image.naturalHeight)
-        const drawW = image.naturalWidth * scale
-        const drawH = image.naturalHeight * scale
-        const offsetX = (canvas.width - drawW) / 2
-        const offsetY = (canvas.height - drawH) / 2
+      if (pieces && positionsRef.current.length > 0) {
+        const t = getTransform()
+        if (!t) return
 
-        drawPieces(ctx, pieces, positionsRef.current, offsetX, offsetY, scale)
+        drawPieces(ctx, pieces, positionsRef.current, drawOrderRef.current, t.offsetX, t.offsetY, t.scale)
 
-        if (started && selectedPiece >= 0 && selectedPiece < pieces.length) {
+        if (dragRef.current) {
+          const di = dragRef.current.pieceIndex
           drawPieceHighlight(
-            ctx, pieces[selectedPiece], positionsRef.current[selectedPiece],
-            offsetX, offsetY, scale,
+            ctx, pieces[di], positionsRef.current[di],
+            t.offsetX, t.offsetY, t.scale,
           )
         }
       }
     }
 
-    redraw()
-    window.addEventListener('resize', redraw)
+    redrawRef.current = redraw
 
-    const handleClick = (e: MouseEvent) => {
+    const handleMouseDown = (e: MouseEvent) => {
       if (!started || !pieces) return
-      const canvas = canvasRef.current
-      if (!canvas) return
       const ctx = canvas.getContext('2d')
       if (!ctx) return
-
-      const maxW = canvas.width * 0.8
-      const maxH = canvas.height * 0.8
-      const scale = Math.min(maxW / image!.naturalWidth, maxH / image!.naturalHeight)
-      const drawW = image!.naturalWidth * scale
-      const drawH = image!.naturalHeight * scale
-      const offsetX = (canvas.width - drawW) / 2
-      const offsetY = (canvas.height - drawH) / 2
+      const t = getTransform()
+      if (!t) return
 
       const hit = hitTestPieces(
-        ctx, pieces, positionsRef.current,
-        offsetX, offsetY, scale,
+        ctx, pieces, positionsRef.current, drawOrderRef.current,
+        t.offsetX, t.offsetY, t.scale,
         e.clientX, e.clientY,
       )
-      setSelectedPiece(hit)
+
+      if (hit >= 0) {
+        const pos = positionsRef.current[hit]
+        dragRef.current = {
+          pieceIndex: hit,
+          offsetX: pos.x - (e.clientX - t.offsetX) / t.scale,
+          offsetY: pos.y - (e.clientY - t.offsetY) / t.scale,
+        }
+
+        // Bring to front
+        const order = drawOrderRef.current
+        const idx = order.indexOf(hit)
+        if (idx >= 0) {
+          order.splice(idx, 1)
+          order.push(hit)
+        }
+
+        redraw()
+      }
     }
 
-    canvas.addEventListener('click', handleClick)
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!dragRef.current) return
+      const t = getTransform()
+      if (!t) return
+
+      const { pieceIndex, offsetX: ox, offsetY: oy } = dragRef.current
+      positionsRef.current[pieceIndex] = {
+        x: (e.clientX - t.offsetX) / t.scale + ox,
+        y: (e.clientY - t.offsetY) / t.scale + oy,
+      }
+      redraw()
+    }
+
+    const handleMouseUp = () => {
+      if (!dragRef.current) return
+      dragRef.current = null
+      redraw()
+    }
+
+    redraw()
+    window.addEventListener('resize', redraw)
+    canvas.addEventListener('mousedown', handleMouseDown)
+    canvas.addEventListener('mousemove', handleMouseMove)
+    canvas.addEventListener('mouseup', handleMouseUp)
+
     return () => {
       window.removeEventListener('resize', redraw)
-      canvas.removeEventListener('click', handleClick)
+      canvas.removeEventListener('mousedown', handleMouseDown)
+      canvas.removeEventListener('mousemove', handleMouseMove)
+      canvas.removeEventListener('mouseup', handleMouseUp)
+      redrawRef.current = null
     }
-  }, [image, pieces, started, selectedPiece])
+  }, [image, pieces, started])
 
   const handleFile = (e: Event) => {
     const file = (e.target as HTMLInputElement).files?.[0]
