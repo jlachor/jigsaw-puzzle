@@ -38,16 +38,21 @@ Build the jigsaw puzzle app iteratively, starting from the simplest possible wor
 - Piece count label: "4 × 3 = 12 pieces"
 - Files: `src/app.tsx`, `src/app.css`
 
-### Step 4: Jigsaw-shaped edges (bezier tabs)
+### Step 4a: Rectangular tabs (edge data model + simple rendering)
 - Generate edge data: each internal edge gets a random direction (+1 tab / −1 blank)
 - Adjacent pieces always have opposite directions (one tab, one blank)
-- Border edges remain straight lines
-- Tab/blank size: 1/3 of edge length, centered on the edge
-- Draw edges with cubic bezier curves: narrow neck, round head (classic jigsaw profile)
-- Replace the straight grid lines in the preview with jigsaw-shaped paths
+- Border edges = 0 (straight lines)
+- Tab/blank shape: simple rectangle, 1/3 of edge length wide, 1/3 of edge length tall, centered on the edge
+- Replace the straight grid lines in the preview with tab/blank outlines
 - "Reshuffle" button regenerates all random directions and redraws
-- New file: `src/puzzle/generator.ts` — edge data generation + bezier path building
-- Verify: see jigsaw-shaped cut preview; reshuffle changes the shapes
+- New file: `src/puzzle/generator.ts` — edge data generation + rectangular path building
+- Verify: see rectangular tab/blank cut preview; tabs interlock correctly; reshuffle works
+
+### Step 4b: Bezier curves (upgrade rectangles to round jigsaw shape)
+- Replace rectangular tab paths with cubic bezier curves
+- Narrow neck, round head — classic jigsaw profile
+- Same data model, same 1/3 size — only the path drawing changes
+- Verify: tabs now look like real jigsaw pieces; everything else unchanged
 - See `tech-decisions.md` → "Jigsaw Edge Specification" for full geometry details
 
 ### Step 5: Piece rendering (pre-render to offscreen canvases)
