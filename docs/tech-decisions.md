@@ -22,7 +22,7 @@ A browser-based jigsaw puzzle application that lets users create puzzles from an
 | Language | **TypeScript** | Type safety for modeling pieces, groups, geometry |
 | UI framework | **Preact** | Lightweight (~3KB) React-like framework for the UI shell around the canvas |
 | Rendering | **HTML5 Canvas 2D** | Pixel-level control for clipping images into puzzle shapes, efficient drawing |
-| Image handling | **Native Canvas API** + `FileReader` | No library needed for loading and slicing user images |
+| Image handling | **Native Canvas API** + `URL.createObjectURL` | No library needed for loading and slicing user images |
 
 ## Architecture
 
@@ -56,20 +56,24 @@ A browser-based jigsaw puzzle application that lets users create puzzles from an
 | Board layout | **Scrollable/pannable board** | Board is larger than the viewport; user pans to find pieces |
 | Persistence | **None in v1** | Closing the tab loses progress; localStorage save planned for v2 |
 
+## User Flow
+
+Two screens:
+
+1. **Setup screen** — Upload image → grid size controls + live jigsaw cut preview + reshuffle button → "Start"
+2. **Board screen** — Scattered pieces on a pannable surface → drag, snap, group → win
+
+Grid size controls and cut preview are on the same screen with live feedback (no wizard steps).
+
 ## Planned Project Structure
 
 ```
 src/
-  main.ts            — entry, canvas setup, file upload
-  components/        — Preact UI components
-    Upload.tsx       — file upload dialog
-    HUD.tsx          — piece count, timer
-    WinScreen.tsx    — win screen overlay
-  puzzle/
-    generator.ts     — cut image into pieces (bezier paths)
-    piece.ts         — piece model + rendering
-    group.ts         — group of snapped pieces
-    board.ts         — drag/drop, snap detection, win check
-  utils/
-    geometry.ts      — point/rect math, hit testing
+  main.tsx           — entry, mounts App
+  app.tsx            — root component, screen routing, canvas
+  app.css            — UI overlay styles
+  index.css          — global reset, body styles
+  components/        — Preact UI components (as needed in later steps)
+  puzzle/            — generator, piece model, group, board logic
+  utils/             — geometry helpers, hit testing
 ```
