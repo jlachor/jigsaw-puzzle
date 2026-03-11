@@ -54,6 +54,11 @@ A browser-based jigsaw puzzle application that lets users create puzzles from an
 |---|---|---|
 | Piece count | **User-configurable** | User picks grid size (e.g. 4×4 up to 20×20) |
 | Board layout | **Scrollable/pannable board** | Board is larger than the viewport; user pans to find pieces |
+| Snap model | **Neighbor snap only** | Pieces snap to adjacent neighbors anywhere on the board — no snap-to-grid/solved-position |
+| Snap threshold | **Half cell size** | Pieces must "meet halfway" to snap; prevents frustration (too tight) and accidental joins (too loose) |
+| Selection | **Marquee (RTS box select)** | Click-drag on empty space draws a selection rectangle; separate from permanent groups |
+| Marquee hit test | **Center point** | A piece/group is selected only if its center falls inside the marquee rectangle |
+| Board boundaries | **Enforced** | Pieces/groups cannot be dragged outside the board area |
 | Persistence | **None in v1** | Closing the tab loses progress; localStorage save planned for v2 |
 
 ## Jigsaw Edge Specification

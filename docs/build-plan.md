@@ -86,27 +86,64 @@ Build the jigsaw puzzle app iteratively, starting from the simplest possible wor
 - Replaced click-to-select with full drag; yellow highlight shown on dragged piece
 - Files: `src/puzzle/piece.ts`, `src/app.tsx`
 
-### Step 8: Snap to correct position
-- When a piece is dropped close to its correct position, snap it there
-- Visual feedback on snap
-- Verify: drag a piece near its home → it snaps into place
+### Step 8a: Group data model
+- Introduce a `Group` structure (set of piece indices + shared position offset)
+- Every piece starts in its own single-piece group
+- Dragging and drawing work through groups instead of raw piece indices
+- No behavior change yet — everything looks and feels the same
+- New file: `src/puzzle/group.ts`
+- Verify: game plays identically to before
 
-### Step 9: Group formation
-- When a piece snaps next to an already-snapped neighbor, they form a group
-- Dragging any piece in a group moves the whole group
-- Verify: snap two adjacent pieces → they move together
+### Step 8b: Snap detection
+- On mouse-up, check if the dropped piece has any grid-adjacent neighbor within
+  half a cell distance (pieces must "meet halfway")
+- If so, snap the piece position so edges align perfectly
+- No group merging yet — the piece just teleports to the correct offset
+- Verify: drag piece A near its neighbor B → A snaps flush against B
 
-### Step 10: Win detection
+### Step 8c: Group merging
+- After a snap, merge the two pieces' groups into one
+- All pieces in a group store positions relative to each other (internally rigid)
+- Verify: snap A to B → they're now in the same group
+
+### Step 8d: Group dragging
+- Clicking any piece in a group starts dragging the entire group
+- All member positions update together during mousemove
+- Verify: snap two pieces → drag one → both move together
+
+### Step 8e: Group z-ordering
+- When a group is picked up, all its members move to the front of the draw order
+- Verify: snap two pieces, drag them over a loose piece → the group draws on top
+
+### Step 8f: Transitive merging + visual feedback
+- On drop, check all group members against their neighbors (not just the dragged piece)
+  — one drop can trigger multiple merges
+- Brief visual feedback on snap (e.g. flash or settle animation)
+- Verify: drag a piece that bridges two existing groups → all three merge
+
+### Step 9: Marquee (RTS box) selection
+- Click-drag on empty space draws a selection rectangle
+- Selection uses **center point** test: a piece or group is selected if its center
+  is inside the marquee rectangle
+- Selected pieces/groups can be dragged together (temporary bulk move, not a permanent bond)
+- Releasing without dragging clears the selection
+- Verify: draw a box around several pieces → drag them all at once
+
+### Step 10: Board boundaries
+- Define a board area larger than the image (e.g. 2× in each dimension)
+- Pieces/groups cannot be dragged outside the board bounds (clamp position on drop)
+- Verify: try to drag a piece off-screen → it stops at the board edge
+
+### Step 11: Win detection
 - After each snap, check if all pieces belong to one group
 - Show a simple "You win!" overlay
 - Verify: complete a small puzzle → see win message
 
-### Step 11: Scrollable/pannable board
-- Make the board larger than the viewport
+### Step 12: Scrollable/pannable board
 - Middle-click or two-finger drag to pan the board
 - Verify: pieces are scattered across a large area, can pan to find them
 
-### Step 12: Polish & UI shell
+### Step 13: Polish & UI shell
 - HUD: piece count, timer
 - Win screen overlay
 - Better visual feedback (highlight snap targets, drop shadows on dragged piece)

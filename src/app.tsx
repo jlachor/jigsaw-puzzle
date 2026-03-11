@@ -9,6 +9,8 @@ import {
   drawPieceHighlight,
 } from './puzzle/piece'
 import type { PiecePosition } from './puzzle/piece'
+import { createGroups, getGroupMembers, moveGroup, bringGroupToFront } from './puzzle/group'
+import type { GroupState } from './puzzle/group'
 import './app.css'
 
 interface DragState {
@@ -27,6 +29,7 @@ export function App() {
   const [started, setStarted] = useState(false)
   const positionsRef = useRef<PiecePosition[]>([])
   const drawOrderRef = useRef<number[]>([])
+  const groupsRef = useRef<GroupState>(createGroups(0))
   const dragRef = useRef<DragState | null>(null)
   const redrawRef = useRef<(() => void) | null>(null)
 
@@ -40,11 +43,12 @@ export function App() {
     [image, cols, rows, edges],
   )
 
-  // Keep grid positions and draw order in sync during preview
+  // Keep grid positions, draw order, and groups in sync during preview
   useEffect(() => {
     if (pieces && !started) {
       positionsRef.current = getGridPositions(pieces)
       drawOrderRef.current = pieces.map((_, i) => i)
+      groupsRef.current = createGroups(pieces.length)
     }
   }, [pieces, started])
 
@@ -58,6 +62,7 @@ export function App() {
       image.naturalHeight,
     )
     drawOrderRef.current = pieces.map((_, i) => i)
+    groupsRef.current = createGroups(pieces.length)
     setStarted(true)
   }
 
@@ -106,11 +111,13 @@ export function App() {
         drawPieces(ctx, pieces, positionsRef.current, drawOrderRef.current, t.offsetX, t.offsetY, t.scale)
 
         if (dragRef.current) {
-          const di = dragRef.current.pieceIndex
-          drawPieceHighlight(
-            ctx, pieces[di], positionsRef.current[di],
-            t.offsetX, t.offsetY, t.scale,
-          )
+          const members = getGroupMembers(groupsRef.current, dragRef.current.pieceIndex)
+          for (const mi of members) {
+            drawPieceHighlight(
+              ctx, pieces[mi], positionsRef.current[mi],
+              t.offsetX, t.offsetY, t.scale,
+            )
+          }
         }
       }
     }
@@ -138,13 +145,8 @@ export function App() {
           offsetY: pos.y - (e.clientY - t.offsetY) / t.scale,
         }
 
-        // Bring to front
-        const order = drawOrderRef.current
-        const idx = order.indexOf(hit)
-        if (idx >= 0) {
-          order.splice(idx, 1)
-          order.push(hit)
-        }
+        // Bring group to front (for single pieces this is the same as before)
+        bringGroupToFront(groupsRef.current, drawOrderRef.current, hit)
 
         scheduleRedraw()
       }
@@ -156,10 +158,10 @@ export function App() {
       if (!t) return
 
       const { pieceIndex, offsetX: ox, offsetY: oy } = dragRef.current
-      positionsRef.current[pieceIndex] = {
-        x: (e.clientX - t.offsetX) / t.scale + ox,
-        y: (e.clientY - t.offsetY) / t.scale + oy,
-      }
+      const oldPos = positionsRef.current[pieceIndex]
+      const newX = (e.clientX - t.offsetX) / t.scale + ox
+      const newY = (e.clientY - t.offsetY) / t.scale + oy
+      moveGroup(groupsRef.current, positionsRef.current, pieceIndex, newX - oldPos.x, newY - oldPos.y)
       scheduleRedraw()
     }
 
